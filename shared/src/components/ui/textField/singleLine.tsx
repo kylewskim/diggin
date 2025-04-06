@@ -10,9 +10,9 @@ export interface SingleLineTextFieldProps extends Omit<React.InputHTMLAttributes
 }
 
 const sizeStyles = {
-  sm: 'h-8 text-body-md-regular pl-3 pr-[40px]',  // 32px height, left: 12px, right: 40px (12px + 28px)
-  md: 'h-10 text-body-md-regular pl-3 pr-[40px]', // 40px height, left: 12px, right: 40px (12px + 28px)
-  lg: 'h-12 text-body-md-regular pl-3 pr-[44px]'  // 48px height, left: 12px, right: 44px (16px + 28px)
+  sm: 'h-8 text-body-md-rg pl-3 pr-[40px]',  // 32px height, left: 12px, right: 40px (12px + 28px)
+  md: 'h-10 text-body-md-rg pl-3 pr-[40px]', // 40px height, left: 12px, right: 40px (12px + 28px)
+  lg: 'h-12 text-body-md-rg pl-3 pr-[44px]'  // 48px height, left: 12px, right: 44px (16px + 28px)
 };
 
 const iconPositionStyles = {

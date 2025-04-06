@@ -1,5 +1,70 @@
+/* Reset default styles */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+
+/* @import './typography.css'; */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import './typography.css'; 
+
+@layer base {
+  :root {
+    font-family: "Pretendard Variable";
+  }
+  textarea {
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: -0.14px;
+    font-weight: 400;
+  }
+  input {
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: -0.14px;
+    font-weight: 400;
+  }
+}
+
+@layer components {
+  .text-title-md {
+    @apply text-[18px] leading-[24px] tracking-[-0.18px] !important;
+  }
+  
+  .text-title-lg {
+    @apply text-[24px] leading-[30px] tracking-[-0.24px] !important;
+  }
+  
+  .text-title-sm {
+    @apply text-[17px] leading-[22px] tracking-[-0.17px] !important;
+  }
+  
+  .text-title-xlg {
+    @apply text-[40px] leading-[50px] tracking-[-0.4px] !important;
+  }
+
+  .text-body-lg-rg {
+    @apply text-[16px] leading-[22px] tracking-[-0.16px] font-normal !important;
+  }
+  
+  .text-body-lg-md {
+    @apply text-[16px] leading-[22px] tracking-[-0.16px] font-medium !important;
+  }
+  
+  .text-body-md-rg {
+    @apply text-[14px] leading-[18px] tracking-[-0.14px] font-normal;
+  }
+  
+  .text-body-md-md {
+    @apply text-[14px] leading-[18px] tracking-[-0.14px] font-medium !important;
+  }
+
+  .text-caption-md-rg {
+    @apply text-[12px] leading-[16px] tracking-[-0.12px] font-normal !important;
+  }
+  
+  .text-caption-md-md {
+    @apply text-[12px] leading-[16px] tracking-[-0.12px] font-medium !important;
+  }
+} 
