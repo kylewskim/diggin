@@ -1,0 +1,64 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+
+@layer base {
+  :root {
+    font-family: "Pretendard Variable";
+  }
+}
+
+@layer components {
+  /* Title styles */
+  .text-title-md {
+    @apply text-[18px] leading-[24px] tracking-[-0.18px];
+  }
+  
+  .text-title-lg {
+    @apply text-[24px] leading-[30px] tracking-[-0.24px];
+  }
+  
+  .text-title-sm {
+    @apply text-[17px] leading-[22px] tracking-[-0.17px];
+  }
+  
+  .text-title-xlg {
+    @apply text-[40px] leading-[50px] tracking-[-0.4px];
+  }
+
+  /* Body styles */
+  .text-body-lg {
+    @apply text-[16px] leading-[22px] tracking-[-0.16px];
+  }
+  
+  .text-body-lg-regular {
+    @apply text-body-lg font-normal;
+  }
+  
+  .text-body-lg-medium {
+    @apply text-body-lg font-medium;
+  }
+  
+  .text-body-md {
+    @apply text-[14px] leading-[18px] tracking-[-0.14px];
+  }
+  
+  .text-body-md-regular {
+    @apply text-body-md font-normal;
+  }
+  
+  .text-body-md-medium {
+    @apply text-body-md font-medium;
+  }
+
+  /* Caption styles */
+  .text-caption-md {
+    @apply text-[12px] leading-[16px] tracking-[-0.12px];
+  }
+  
+  .text-caption-md-regular {
+    @apply text-caption-md font-normal;
+  }
+  
+  .text-caption-md-medium {
+    @apply text-caption-md font-medium;
+  }
+} 
