@@ -42,7 +42,7 @@
   }
   
   .text-body-md-regular {
-    @apply text-body-md font-normal;
+    @apply text-body-md font-regular;
   }
   
   .text-body-md-medium {

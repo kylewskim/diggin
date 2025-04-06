@@ -37,7 +37,7 @@ const config: StorybookConfig = {
             require('autoprefixer'),
           ],
         },
-      },
+      }
     });
   },
 };
