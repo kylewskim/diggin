@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      include: '**/*.{jsx,tsx,js,ts,svg}',
+    })
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

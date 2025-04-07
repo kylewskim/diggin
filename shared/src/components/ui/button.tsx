@@ -1,11 +1,11 @@
 import React from 'react'
-import { cn } from '../../lib/utils'
+import { cn } from '@/utils'
 
 export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   variant: 'primary' | 'secondary' | 'tertiary'
-  size: 'lg' | 'md' | 'sm'
-  status: 'default' | 'hover' | 'disabled'
-  isIconOnly: boolean
+  size: 'sm' | 'md' | 'lg'
+  disabled?: boolean
+  isIconOnly?: boolean
   showTooltip?: boolean
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
@@ -18,7 +18,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({
     variant = 'primary',
     size = 'md',
-    status = 'default',
+    disabled = false,
     isIconOnly = false,
     showTooltip = false,
     leftIcon,
@@ -36,100 +36,84 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       'relative group'
     )
 
-    const variantStatusStyles = {
-      primary: {
-        default: cn(
-          'bg-fill-primary-light dark:bg-fill-primary-dark',
-          'text-text-inverted-light dark:text-text-inverted-dark',
-          '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark'
-        ),
-        hover: cn(
-          'bg-gray-850 dark:bg-gray-100',
-          'text-text-inverted-light dark:text-text-inverted-dark',
-          '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark'
-        ),
-        disabled: cn(
-          'bg-fill-disabled-light dark:bg-fill-disabled-dark',
-          'text-text-disabled-light dark:text-text-disabled-dark',
-          '[&_svg]:text-icon-disabled-light dark:[&_svg]:text-icon-disabled-dark',
-          'cursor-not-allowed'
-        )
-      },
-      secondary: {
-        default: cn(
-          'bg-fill-secondary-light dark:bg-fill-secondary-dark',
-          'text-text-primary-light dark:text-text-primary-dark',
-          'border border-line-secondary-light dark:border-line-secondary-dark'
-        ),
-        hover: cn(
-          'bg-gray-50 dark:bg-gray-800',
-          'text-text-primary-light dark:text-text-primary-dark',
-          'border border-line-secondary-light dark:border-line-secondary-dark'
-        ),
-        disabled: cn(
-        //   'bg-fill-disabled-light dark:bg-fill-disabled-dark',
-          'text-text-disabled-light dark:text-text-disabled-dark',
-          'border border-line-disabled-light dark:border-line-disabled-dark',
-          'cursor-not-allowed'
-        )
-      },
-      tertiary: {
-        default: cn(
-          'bg-transparent',
-          'text-text-primary-light dark:text-text-primary-dark'
-        ),
-        hover: cn(
-          'bg-gray-50 dark:bg-gray-800',
-          'text-text-primary-light dark:text-text-primary-dark'
-        ),
-        disabled: cn(
-          'bg-transparent',
-          'text-text-disabled-light dark:text-text-disabled-dark',
-          'cursor-not-allowed'
-        )
-      }
+    const variantStyles = {
+      primary: cn(
+        'bg-fill-primary-light dark:bg-fill-primary-dark',
+        'text-text-inverted-light dark:text-text-inverted-dark',
+        'hover:bg-gray-850 dark:hover:bg-gray-100',
+        'disabled:bg-fill-disabled-light dark:disabled:bg-fill-disabled-dark',
+        'disabled:text-text-disabled-light dark:disabled:text-text-disabled-dark',
+        'disabled:cursor-not-allowed'
+      ),
+      secondary: cn(
+        'bg-fill-secondary-light dark:bg-fill-secondary-dark',
+        'text-text-primary-light dark:text-text-primary-dark',
+        'border border-line-secondary-light dark:border-line-secondary-dark',
+        'hover:bg-gray-50 dark:hover:bg-gray-800',
+        'disabled:text-text-disabled-light dark:disabled:text-text-disabled-dark',
+        'disabled:border-line-disabled-light dark:disabled:border-line-disabled-dark',
+        'disabled:cursor-not-allowed'
+      ),
+      tertiary: cn(
+        'bg-transparent',
+        'text-text-primary-light dark:text-text-primary-dark',
+        'hover:bg-gray-50 dark:hover:bg-gray-800',
+        'disabled:text-text-disabled-light dark:disabled:text-text-disabled-dark',
+        'disabled:cursor-not-allowed'
+      )
     }
 
     const sizeStyles = {
       sm: isIconOnly
         ? 'w-7 h-7'  // 28px x 28px
         : cn(
-            'px-3 py-[7px]',
-            'min-h-[32px] min-w-[32px]',
+            'px-4',
+            'h-[32px] min-w-[100px]',
             'text-xs font-medium leading-none gap-1.5'
           ),
       md: isIconOnly
-        ? 'w-7 h-7'  // 28px x 28px
+        ? 'w-9 h-9'  // 28px x 28px
         : cn(
-            'px-4 py-[9px]',
-            'min-h-[40px] min-w-[40px]',
+            'px-4',
+            'h-[40px] min-w-[100px]',
             'text-sm font-medium leading-none gap-2'
           ),
       lg: isIconOnly
-        ? 'w-7 h-7'  // 28px x 28px
+        ? 'w-9 h-9'  // 36px x 36px
         : cn(
-            'px-5 py-[11px]',
-            'min-h-[48px] min-w-[48px]',
-            'text-base font-medium leading-none gap-2'
+            'px-5',
+            'h-[48px] min-w-[100px]',
+            'text-sm font-medium leading-none gap-2'
           )
     }
 
+    // const iconColorStyles = {
+    //   primary: cn(
+    //     '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark',
+    //     'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+    //   ),
+    //   secondary: cn(
+    //     '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
+    //     'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+    //   ),
+    //   tertiary: cn(
+    //     '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
+    //     'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+    //   )
+    // }
     const iconColorStyles = {
-      primary: {
-        default: '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark',
-        hover: '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark',
-        disabled: '[&_svg]:text-icon-disabled-light dark:[&_svg]:text-icon-disabled-dark'
-      },
-      secondary: {
-        default: '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        hover: '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        disabled: '[&_svg]:text-icon-disabled-light dark:[&_svg]:text-icon-disabled-dark'
-      },
-      tertiary: {
-        default: '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        hover: '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        disabled: '[&_svg]:text-icon-disabled-light dark:[&_svg]:text-icon-disabled-dark'
-      }
+      primary: cn(
+        '[&_svg]:fill-icon-inverted-light dark:[&_svg]:fill-icon-inverted-dark',
+        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+      ),
+      secondary: cn(
+        '[&_svg]:fill-icon-primary-light dark:[&_svg]:fill-icon-primary-dark',
+        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+      ),
+      tertiary: cn(
+        '[&_svg]:fill-icon-primary-light dark:[&_svg]:fill-icon-primary-dark',
+        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+      )
     }
 
     const iconSizeStyles = {
@@ -143,40 +127,35 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         type="button"
+        disabled={disabled}
         className={cn(
           baseStyles,
-          variantStatusStyles[variant][status],
+          variantStyles[variant],
           sizeStyles[size],
+          iconColorStyles[variant],
           isIconOnly && 'flex items-center justify-center p-0',
+          isIconOnly ? (
+            size === 'sm' ? '[&_svg]:w-4 [&_svg]:h-4' : 
+            size === 'md' ? '[&_svg]:w-5 [&_svg]:h-5' : 
+            '[&_svg]:w-6 [&_svg]:h-6'
+          ) : '[&_svg]:w-4 [&_svg]:h-4',
           className
         )}
         {...props}
       >
         {showLeftIcon && leftIcon && !isIconOnly && (
-          <span className={cn(
-            iconSizeStyles.withText,
-            iconColorStyles[variant][status],
-            'flex items-center justify-center'
-          )}>
+          <span className="flex items-center justify-center">
             {leftIcon}
           </span>
         )}
         {!isIconOnly && children}
         {isIconOnly && leftIcon && (
-          <span className={cn(
-            'w-4 h-4',
-            iconColorStyles[variant][status],
-            'flex items-center justify-center'
-          )}>
+          <span className="flex items-center justify-center">
             {leftIcon}
           </span>
         )}
         {showRightIcon && rightIcon && !isIconOnly && (
-          <span className={cn(
-            iconSizeStyles.withText,
-            iconColorStyles[variant][status],
-            'flex items-center justify-center'
-          )}>
+          <span className="flex items-center justify-center">
             {rightIcon}
           </span>
         )}

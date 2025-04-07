@@ -25,6 +25,13 @@
     letter-spacing: -0.14px;
     font-weight: 400;
   }
+  button {
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: -0.14px;
+    font-weight: 400;
+  }
 }
 
 @layer components {
