@@ -1,0 +1,30 @@
+import { SVGProps } from 'react';
+interface IconProps extends SVGProps<SVGSVGElement> {
+    className?: string;
+}
+export declare const AddIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const ArchiveIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const BackIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const CheckIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const ChevronRightIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const CloseIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const EditIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const FilterIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const HideTabIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const HighlightIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const HourglassIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const InfoIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const LightbulbIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const LinkIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const OverflowIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const PauseIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const PlayIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const ReorderIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const SearchIcon: ({ className }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const SettingIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const SortIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const StopIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const TimeIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const TrashIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export declare const TripleStarsIcon: ({ className, ...props }: IconProps) => import("react/jsx-runtime").JSX.Element;
+export {};

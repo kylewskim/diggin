@@ -10,7 +10,14 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
-      colors: getTailwindColors(),
+      colors: {
+        'color-surface-bg': '#FFFFFF',
+        'color-fill-primary': '#1D1D1D',
+        'color-text-inverted': '#FFFFFF',
+      },
+      fontFamily: {
+        'pretendard': ['Pretendard', 'sans-serif'],
+      },
     },
   },
   plugins: [],

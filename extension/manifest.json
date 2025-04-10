@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Diggin",
+  "version": "1.0.0",
+  "description": "A Chrome extension for Diggin",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "public/icon16.png",
+      "48": "public/icon48.png",
+      "128": "public/icon128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "icons": {
+    "16": "public/icon16.png",
+    "48": "public/icon48.png",
+    "128": "public/icon128.png"
+  }
+} 

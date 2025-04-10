@@ -116,13 +116,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       )
     }
 
-    const iconSizeStyles = {
-      sm: 'w-4 h-4',
-      md: 'w-5 h-5',
-      lg: 'w-6 h-6',
-      withText: 'w-4 h-4'
-    }
-
     return (
       <button
         ref={ref}
