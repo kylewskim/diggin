@@ -63,7 +63,7 @@ pnpm build:extension
 
 
 ## Contact Information
-Lead Developer & Designer: Zeyi Chen
-Email: zeyi19@uw.edu
-GitHub: github.com/babu111
-Client Contact: Kyle Kim
+- Lead Developer & Designer: Zeyi Chen
+- Email: zeyi19@uw.edu
+- GitHub: github.com/babu111
+- Client Contact: Kyle Kim
