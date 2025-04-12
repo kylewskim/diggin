@@ -58,4 +58,12 @@ pnpm build:extension
 - TailwindCSS
 - Vite
 - Firebase
-- Chrome Extension API 
+- Chrome Extension API
+
+
+
+## Contact Information
+- Lead Developer & Designer: Zeyi Chen
+- Email: zeyi19@uw.edu
+- GitHub: github.com/babu111
+- Client Contact: Kyle Kim
