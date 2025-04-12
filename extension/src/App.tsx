@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/LoginPage';
 import MainPage from './pages/MainPage';
 import SelectIconPage from './pages/SelectIconPage';
+import CreateHolePage from './pages/CreateHolePage';
 
 const App: React.FC = () => {
   return (
@@ -12,6 +13,7 @@ const App: React.FC = () => {
           <Route path="/" element={<LoginPage />} />
           <Route path="/main" element={<MainPage />} />
           <Route path="/select-icon" element={<SelectIconPage />} />
+          <Route path="/create-hole" element={<CreateHolePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

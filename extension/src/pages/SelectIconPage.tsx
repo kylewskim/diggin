@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
 import * as Icons from '@shared/icons';
 import { IconSelector } from '@shared/components/ui/IconSelector';
@@ -57,31 +57,56 @@ interface IconData {
   icon: React.ReactNode;
 }
 
+interface LocationState {
+  holeName?: string;
+}
+
 const SelectIconPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as LocationState;
+  
+  console.log('Received state in SelectIconPage:', state);
+  
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [selectedIconData, setSelectedIconData] = useState<IconData | null>(null);
+  const [holeName, setHoleName] = useState<string>('');
+
+  useEffect(() => {
+    // MainPage에서 전달받은 홀 이름 설정
+    if (state?.holeName) {
+      console.log('Setting holeName from state:', state.holeName);
+      setHoleName(state.holeName);
+    }
+  }, [state]);
 
   const handleIconSelect = (icon: IconData) => {
+    console.log('Selected icon:', icon);
     setSelectedIcon(icon.id);
     setSelectedIconData(icon);
   };
 
   const handleBackClick = () => {
+    console.log('Going back to previous page');
     navigate(-1);
   };
 
   const handleSelectClick = () => {
-    if (selectedIcon && selectedIconData) {
-      // 선택된 아이콘으로 다음 단계로 이동
-      navigate('/create-hole', { state: { selectedIcon, selectedIconData } });
-    }
+    console.log('Selected icon ID:', selectedIcon);
+    console.log('Sending state to create-hole:', { selectedIconId: selectedIcon, holeName });
+    navigate('/create-hole', { 
+      state: { 
+        selectedIconId: selectedIcon, 
+        holeName 
+      },
+      replace: true // Replace the history entry to ensure back navigation works properly
+    });
   };
 
   return (
     <div className="dark w-80 h-96 bg-surface-bg-dark inline-flex flex-col justify-between items-center overflow-hidden">
       {/* 헤더 */}
-      <div className="self-stretch h-12 px-3 py-3 border-b text-color-line-tertiary dark:text-color-line-tertiary inline-flex justify-between items-center">
+      <div className="self-stretch h-12 px-3 py-3 border-b border-color-line-tertiary dark:border-color-line-tertiary inline-flex justify-between items-center">
         <Button
           variant="tertiary"
           size="sm"
