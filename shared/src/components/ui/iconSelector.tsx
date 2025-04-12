@@ -18,8 +18,8 @@ export const IconSelector = React.forwardRef<
       className={cn(
         "group relative flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-[8px] transition-all",
         selected
-          ? "bg-transparent border-line-primary-light dark:border-line-primary-dark border"
-          : "bg-transparent border-line-tertiary-light dark:border-line-tertiary-dark border",
+          ? "border border-line-primary-light dark:border-line-primary-dark"
+          : "border border-line-tertiary-light dark:border-line-tertiary-dark hover:border-line-secondary-light dark:hover:border-line-secondary-dark",
         className
       )}
       {...props}
@@ -28,8 +28,8 @@ export const IconSelector = React.forwardRef<
         className={cn(
           "flex h-[20px] w-[20px] items-center justify-center",
           selected
-            ? "[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark"
-            : "[&_svg]:text-icon-secondary-light [&_svg]:text-icon-secondary-light dark:[&_svg]:text-icon-secondary-dark dark:[&_svg]:text-icon-secondary-dark group-hover:[&_svg]:text-icon-primary-light dark:group-hover:[&_svg]:text-icon-primary-dark",
+            ? "[&>svg]:text-icon-primary-light dark:[&>svg]:text-icon-primary-dark"
+            : "[&>svg]:text-icon-secondary-light dark:[&>svg]:text-icon-secondary-dark group-hover:[&>svg]:text-icon-primary-light dark:group-hover:[&>svg]:text-icon-primary-dark",
         )}
       >
         {icon}
@@ -38,6 +38,6 @@ export const IconSelector = React.forwardRef<
   );
 });
 
-IconSelector.displayName = 'IconSelector';
+IconSelector.displayName = "IconSelector";
 
 export default IconSelector; 

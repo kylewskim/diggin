@@ -49,7 +49,8 @@ pnpm build:extension
 - Automatic content saving from Chrome extension
 - Firebase storage for user data
 - Web dashboard for content management
-- Firebase Authentication (email/password)
+- Google Authentication (OAuth 2.0)
+- Bookmark and tagging system for saved content
 
 ## Tech Stack
 
@@ -57,10 +58,33 @@ pnpm build:extension
 - TypeScript
 - TailwindCSS
 - Vite
-- Firebase
+- Firebase (Auth, Firestore)
 - Chrome Extension API
 
+## Data Model
 
+The application uses the following data model:
+
+### User
+- Basic profile information from Google Auth
+- Timestamp of the last login
+
+### Hole
+- Container for organizing content by topic/purpose
+- Each hole has a name and an icon
+- Users can have multiple holes
+
+### Session
+- Represents a period of active collection
+- Each hole can have multiple sessions
+- Only one active session per hole at a time
+
+### TextEntry
+- Text content captured when a user copies text
+- Source URL and domain are tracked
+- Can be bookmarked and tagged
+
+For more details on the backend implementation, see [Backend Documentation](./shared/src/services/README.md).
 
 ## Contact Information
 - Lead Developer & Designer: Zeyi Chen

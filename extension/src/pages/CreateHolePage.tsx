@@ -4,6 +4,9 @@ import { Button } from '../components/Button';
 import { TextField } from '../components/TextField';
 import * as Icons from '@shared/icons';
 import './scrollbar.css'; // 스크롤바 스타일을 위한 CSS 파일
+import { auth } from '@shared/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { createHole } from '@shared/services/holeService';
 
 // 아이콘 ID로 아이콘 가져오기
 const getIconById = (iconId: string): React.ReactNode => {
@@ -54,46 +57,79 @@ const CreateHolePage: React.FC = () => {
   const location = useLocation();
   const state = location.state as LocationState;
   
-  console.log('Received state in CreateHolePage:', state);
-  
   const [holeName, setHoleName] = useState(state?.holeName || '');
   const [icon, setIcon] = useState<string | null>(state?.selectedIconId || null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('CreateHolePage useEffect triggered with state:', state);
+    // 로그인 상태 확인
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setLoading(false);
+      
+      // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+      if (!user) {
+        navigate('/', { replace: true });
+        return;
+      }
+      
+      // SelectIconPage에서 전달받은 아이콘 ID로 아이콘 생성
+      if (state?.selectedIconId) {
+        setIcon(state.selectedIconId);
+      } else {
+        // 아이콘 ID가 없으면 아이콘 선택 페이지로 이동
+        navigate('/select-icon', { 
+          state: { holeName: state?.holeName || '' },
+          replace: true
+        });
+      }
+      
+      // 홀 이름 설정
+      if (state?.holeName) {
+        setHoleName(state.holeName);
+      }
+    });
     
-    // SelectIconPage에서 전달받은 아이콘 ID로 아이콘 생성
-    if (state?.selectedIconId) {
-      console.log('Setting icon ID:', state.selectedIconId);
-      setIcon(state.selectedIconId);
-    } else {
-      console.log('No selectedIconId found in state');
-    }
-    
-    // MainPage 또는 이전 상태에서 전달받은 홀 이름 설정
-    if (state?.holeName) {
-      setHoleName(state.holeName);
-    }
-  }, [state]);
+    return () => unsubscribe();
+  }, [state, navigate]);
 
   const handleHoleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setHoleName(e.target.value);
   };
 
-  const handleCreateHole = () => {
-    if (holeName.trim()) {
-      // 홀 생성 로직 구현
-      // 데이터베이스에 저장하거나 다른 작업 수행 후 이동
-      navigate('/main'); // 예시로 메인 페이지로 이동
+  const handleCreateHole = async () => {
+    if (holeName.trim() && icon && auth.currentUser) {
+      try {
+        setCreating(true);
+        setError(null);
+        
+        // 홀 생성 로직 구현
+        await createHole(auth.currentUser.uid, holeName, icon);
+        
+        // 생성 성공 후 메인 페이지로 이동
+        navigate('/main', { replace: true });
+      } catch (err) {
+        console.error('홀 생성 실패:', err);
+        setError('홀 생성에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        setCreating(false);
+      }
     }
   };
 
   const handleSelectIcon = () => {
-    console.log('Navigating to select-icon with holeName:', holeName);
     navigate('/select-icon', { state: { holeName } });
   };
 
-  console.log('Current icon state in CreateHolePage render:', icon);
+  // 로딩 중 표시
+  if (loading) {
+    return (
+      <div className="dark w-80 h-96 bg-surface-bg-dark flex items-center justify-center">
+        <p className="text-text-primary-light dark:text-text-primary-dark">로딩 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dark w-80 h-96 pt-8 bg-surface-bg-dark inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
@@ -116,21 +152,28 @@ const CreateHolePage: React.FC = () => {
         <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2">
           <TextField 
             size="lg"
-            isDisabled={false}
+            isDisabled={creating}
             error={false}
             placeholder="Write a new hole name"
             value={holeName}
             onChange={handleHoleNameChange}
             className="self-stretch"
           />
+          
+          {error && (
+            <div className="text-red-500 text-sm w-full text-center mb-2">
+              {error}
+            </div>
+          )}
+          
           <Button
             variant="primary"
             size="lg"
-            disabled={!holeName.trim() || !icon} // 홀 이름과 아이콘이 모두 있어야 활성화
+            disabled={!holeName.trim() || !icon || creating}
             onClick={handleCreateHole}
             className="self-stretch"
           >
-            Create a Hole
+            {creating ? '생성 중...' : 'Create a Hole'}
           </Button>
         </div>
       </div>

@@ -4,6 +4,8 @@ import { Button } from '../components/Button';
 import * as Icons from '@shared/icons';
 import { IconSelector } from '@shared/components/ui/IconSelector';
 import './scrollbar.css'; // 스크롤바 스타일을 위한 CSS 파일
+import { auth } from '@shared/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 // 실제 아이콘 데이터
 const iconCategories = [
@@ -66,19 +68,33 @@ const SelectIconPage: React.FC = () => {
   const location = useLocation();
   const state = location.state as LocationState;
   
-  console.log('Received state in SelectIconPage:', state);
-  
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [selectedIconData, setSelectedIconData] = useState<IconData | null>(null);
   const [holeName, setHoleName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // MainPage에서 전달받은 홀 이름 설정
-    if (state?.holeName) {
-      console.log('Setting holeName from state:', state.holeName);
-      setHoleName(state.holeName);
-    }
-  }, [state]);
+    // 로그인 상태 확인
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setLoading(false);
+      
+      // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+      if (!user) {
+        navigate('/', { replace: true });
+        return;
+      }
+      
+      // MainPage에서 전달받은 홀 이름 설정
+      if (state?.holeName) {
+        setHoleName(state.holeName);
+      } else {
+        // 홀 이름이 없으면 메인 페이지로 이동
+        navigate('/main', { replace: true });
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [state, navigate]);
 
   const handleIconSelect = (icon: IconData) => {
     console.log('Selected icon:', icon);
@@ -99,9 +115,18 @@ const SelectIconPage: React.FC = () => {
         selectedIconId: selectedIcon, 
         holeName 
       },
-      replace: true // Replace the history entry to ensure back navigation works properly
+      replace: true
     });
   };
+
+  // 로딩 중 표시
+  if (loading) {
+    return (
+      <div className="dark w-80 h-96 bg-surface-bg-dark flex items-center justify-center">
+        <p className="text-text-primary-dark">로딩 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dark w-80 h-96 bg-surface-bg-dark inline-flex flex-col justify-between items-center overflow-hidden">

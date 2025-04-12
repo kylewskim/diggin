@@ -1,15 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { signInWithGoogle } from '@shared/services/auth';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
-    // Google 로그인 로직 구현
-    console.log('Google login clicked');
-    // 로그인 성공 시 메인 페이지로 이동
-    navigate('/main');
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Google 로그인 실행
+      const user = await signInWithGoogle();
+      console.log('로그인 성공:', user);
+      
+      // 로그인 성공 시 메인 페이지로 이동
+      navigate('/main');
+    } catch (err) {
+      console.error('로그인 실패:', err);
+      setError('로그인에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -19,14 +34,22 @@ const LoginPage: React.FC = () => {
         <div className="text-body-lg-md text-center justify-center leading-snug text-text-primary-light">
           To start diggin,<br/>log in or create a new account.
         </div>
+        
+        {error && (
+          <div className="text-red-500 text-sm text-center px-4">
+            {error}
+          </div>
+        )}
       </div>
+      
       <Button
         variant="primary"
         size="lg"
         onClick={handleGoogleLogin}
+        disabled={loading}
         className="self-stretch"
       >
-        Log in with Google
+        {loading ? '로그인 중...' : 'Log in with Google'}
       </Button>
     </div>
   );
