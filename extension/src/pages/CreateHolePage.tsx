@@ -107,8 +107,8 @@ const CreateHolePage: React.FC = () => {
         // 홀 생성 로직 구현
         await createHole(auth.currentUser.uid, holeName, icon);
         
-        // 생성 성공 후 메인 페이지로 이동
-        navigate('/main', { replace: true });
+        // 생성 성공 후 홀 목록 페이지로 이동
+        navigate('/hole-list', { replace: true });
       } catch (err) {
         console.error('홀 생성 실패:', err);
         setError('홀 생성에 실패했습니다. 다시 시도해주세요.');

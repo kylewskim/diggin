@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { signInWithGoogle } from '@shared/services/auth';
+import { getUserHoles } from '@shared/services/holeService';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,8 +18,15 @@ const LoginPage: React.FC = () => {
       const user = await signInWithGoogle();
       console.log('로그인 성공:', user);
       
-      // 로그인 성공 시 메인 페이지로 이동
-      navigate('/main');
+      // 사용자의 Hole 목록 확인
+      const userHoles = await getUserHoles(user.uid);
+      
+      // Hole 존재 여부에 따라 라우팅
+      if (userHoles.length > 0) {
+        navigate('/hole-list'); // Hole이 있으면 목록 페이지로
+      } else {
+        navigate('/main'); // Hole이 없으면 메인 페이지로
+      }
     } catch (err) {
       console.error('로그인 실패:', err);
       setError('로그인에 실패했습니다. 다시 시도해주세요.');

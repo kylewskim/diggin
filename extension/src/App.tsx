@@ -4,6 +4,8 @@ import LoginPage from './pages/LoginPage';
 import MainPage from './pages/MainPage';
 import SelectIconPage from './pages/SelectIconPage';
 import CreateHolePage from './pages/CreateHolePage';
+import HoleListPage from './pages/HoleListPage';
+import EmptySessionPage from './pages/EmptySessionPage';
 
 const App: React.FC = () => {
   return (
@@ -12,8 +14,10 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/main" element={<MainPage />} />
+          <Route path="/hole-list" element={<HoleListPage />} />
           <Route path="/select-icon" element={<SelectIconPage />} />
           <Route path="/create-hole" element={<CreateHolePage />} />
+          <Route path="/empty-session" element={<EmptySessionPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
