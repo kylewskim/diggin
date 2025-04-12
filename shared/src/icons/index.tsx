@@ -20,9 +20,9 @@ export const ArchiveIcon = ({ className, ...props }: IconProps) => (
 );
 
 export const BackIcon = ({ className, ...props }: IconProps) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={cn('w-4 h-4', className)} {...props}>
-    <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16.6339 4.33474C17.122 4.78105 17.122 5.50467 16.6339 5.95098L10.0178 12L16.6339 18.049C17.122 18.4953 17.122 19.219 16.6339 19.6653C16.1457 20.1116 15.3543 20.1116 14.8661 19.6653L7.36612 12.8081C6.87796 12.3618 6.87796 11.6382 7.36612 11.1919L14.8661 4.33474C15.3543 3.88842 16.1457 3.88842 16.6339 4.33474Z" fill="#1D1D1D"/>
+</svg>
 );
 
 export const CheckIcon = ({ className, ...props }: IconProps) => (
@@ -134,9 +134,20 @@ export const ReorderIcon = ({ className, ...props }: IconProps) => (
 //   </svg>
 // );
 
-export const SearchIcon = ({ className, ...props }: IconProps) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path fill-rule="evenodd" clip-rule="evenodd" d="M10 4C6.68629 4 4 6.68629 4 10C4 13.3137 6.68629 16 10 16C13.3137 16 16 13.3137 16 10C16 6.68629 13.3137 4 10 4ZM2 10C2 5.58172 5.58172 2 10 2C14.4183 2 18 5.58172 18 10C18 11.8487 17.3729 13.5509 16.3199 14.9056L21.7071 20.2929C22.0976 20.6834 22.0976 21.3166 21.7071 21.7071C21.3166 22.0976 20.6834 22.0976 20.2929 21.7071L14.9057 16.3198C13.551 17.3729 11.8487 18 10 18C5.58172 18 2 14.4183 2 10Z" fill="currentColor"/>
+export const SearchIcon = ({ className }: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M7.33333 2.66667C4.75556 2.66667 2.66667 4.75556 2.66667 7.33333C2.66667 9.91111 4.75556 12 7.33333 12C8.61926 12 9.78815 11.4911 10.6667 10.6667C11.4911 9.78815 12 8.61926 12 7.33333C12 4.75556 9.91111 2.66667 7.33333 2.66667ZM1.33333 7.33333C1.33333 4.01967 4.01967 1.33333 7.33333 1.33333C10.647 1.33333 13.3333 4.01967 13.3333 7.33333C13.3333 8.91345 12.7192 10.3574 11.7073 11.4327L14.4714 14.1968C14.7317 14.4571 14.7317 14.8762 14.4714 15.1365C14.2111 15.3968 13.7921 15.3968 13.5317 15.1365L10.7677 12.3724C9.69233 13.3843 8.24837 13.9984 6.66825 13.9984C3.35459 13.9984 0.668254 11.312 0.668254 7.99837L1.33333 7.33333Z"
+    />
   </svg>
 );
 

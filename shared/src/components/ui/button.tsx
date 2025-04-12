@@ -69,21 +69,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         : cn(
             'px-4',
             'h-[32px] min-w-[100px]',
-            'text-xs font-medium leading-none gap-1.5'
+            'text-body-md-md leading-none gap-1.5'
           ),
       md: isIconOnly
         ? 'w-9 h-9'  // 28px x 28px
         : cn(
             'px-4',
             'h-[40px] min-w-[100px]',
-            'text-sm font-medium leading-none gap-2'
+            'text-body-md-md leading-none gap-2'
           ),
       lg: isIconOnly
         ? 'w-9 h-9'  // 36px x 36px
         : cn(
             'px-5',
             'h-[48px] min-w-[100px]',
-            'text-sm font-medium leading-none gap-2'
+            'text-body-lg-md leading-none gap-2'
           )
     }
 
@@ -103,16 +103,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // }
     const iconColorStyles = {
       primary: cn(
-        '[&_svg]:fill-icon-inverted-light dark:[&_svg]:fill-icon-inverted-dark',
-        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+        '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark',
+        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
       ),
       secondary: cn(
-        '[&_svg]:fill-icon-primary-light dark:[&_svg]:fill-icon-primary-dark',
-        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+        '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
+        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
       ),
       tertiary: cn(
-        '[&_svg]:fill-icon-primary-light dark:[&_svg]:fill-icon-primary-dark',
-        'disabled:[&_svg]:fill-icon-disabled-light dark:disabled:[&_svg]:fill-icon-disabled-dark'
+        '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
+        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
       )
     }
 

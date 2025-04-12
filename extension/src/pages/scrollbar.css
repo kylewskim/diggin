@@ -1,0 +1,66 @@
+/* 커스텀 스크롤바 스타일 */
+/* 스크롤바 컨테이너 자체를 숨기고 오버레이 방식으로 표시 */
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #393939 transparent; /* line-tertiary dark */
+}
+
+/* 스크롤바 기본 설정 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+  background-color: transparent !important;
+  margin-top: 4px !important;
+}
+
+/* 스크롤바 트랙 */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent !important;
+  border-radius: 2px !important;
+  width: 4px !important;
+  margin-top: 4px !important;
+  padding: 0 !important;
+}
+
+/* 스크롤바 썸 */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #393939 !important; /* line-tertiary dark */
+  border-radius: 2px !important;
+  width: 4px !important;
+  max-width: 4px !important;
+  min-width: 4px !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin-top: 4px !important;
+}
+
+/* 호버 상태 명시적 스타일링 */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:active,
+.custom-scrollbar::-webkit-scrollbar-thumb:focus {
+  background-color: #393939 !important;
+  width: 4px !important;
+  max-width: 4px !important;
+  min-width: 4px !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 스크롤바 코너 */
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background-color: transparent !important;
+}
+
+/* 스크롤바 호버 시 너비 유지 */
+.custom-scrollbar::-webkit-scrollbar:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-track:hover {
+  width: 4px !important;
+}
+
+/* Firefox 스크롤바 스타일 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #393939 transparent; /* line-tertiary dark */
+} 

@@ -1,4 +1,4 @@
-import { ChangeEvent, forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { cn } from '../../../utils/cn';
 
 export interface MultipleLinesTextFieldProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'size'> {

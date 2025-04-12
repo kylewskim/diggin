@@ -11,9 +11,11 @@
     "test": "npm run build && chrome-extension-cli load --extension-path=./dist"
   },
   "dependencies": {
+    "clsx": "^2.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0",
+    "tailwind-merge": "^2.2.0",
     "tailwindcss": "^3.4.1"
   },
   "devDependencies": {

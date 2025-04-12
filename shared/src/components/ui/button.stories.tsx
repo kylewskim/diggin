@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { Button } from './button'
-import { SearchIcon, FilterIcon } from '@/icons'
+import { SearchIcon, FilterIcon } from '../../icons'
+import * as Icons from '../../icons';
+
 
 const meta = {
   title: 'UI/Button',
@@ -48,8 +50,8 @@ export const Primary: Story = {
     children: 'Button',
     showLeftIcon: true,
     showRightIcon: true,
-    leftIcon: <FilterIcon />,
-    rightIcon: <SearchIcon />,
+    leftIcon: <Icons.CheckIcon />,
+    rightIcon: <Icons.CheckIcon />,
   },
 }
 
@@ -61,8 +63,8 @@ export const Secondary: Story = {
     children: 'Button',
     showLeftIcon: true,
     showRightIcon: true,
-    leftIcon: <SearchIcon />,
-    rightIcon: <SearchIcon />,
+    leftIcon: <Icons.CheckIcon />,
+    rightIcon: <Icons.CheckIcon />,
   },
 }
 
@@ -74,8 +76,8 @@ export const Tertiary: Story = {
     children: 'Button',
     showLeftIcon: true,
     showRightIcon: true,
-    leftIcon: <SearchIcon />,
-    rightIcon: <SearchIcon />,
+    leftIcon: <Icons.CheckIcon />,
+    rightIcon: <Icons.CheckIcon />,
   },
 }
 
@@ -83,11 +85,12 @@ export const Tertiary: Story = {
 export const SizeVariants: Story = {
   args: {
     variant: 'primary',
+    size: 'md',
     children: 'Button',
     showLeftIcon: true,
     showRightIcon: true,
-    leftIcon: <SearchIcon />,
-    rightIcon: <SearchIcon />,
+    leftIcon: <Icons.CheckIcon />,
+    rightIcon: <Icons.CheckIcon />,
   },
   render: (args) => (
     <div className="flex flex-col gap-4">

@@ -26,11 +26,14 @@ const preview: Preview = {
     },
   },
   decorators: [
-    (Story) => (
-      <div className="font-pretendard">
-        <Story />
-      </div>
-    ),
+    (Story, context) => {
+      const isDarkMode = context.globals.backgrounds?.value === '#1A1A1A';
+      return (
+        <div className={`font-pretendard ${isDarkMode ? 'dark' : ''}`}>
+          <Story />
+        </div>
+      );
+    },
   ],
 };
 
