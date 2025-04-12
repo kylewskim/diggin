@@ -2,6 +2,7 @@
 export * from "./components/ui/textField/singleLine";
 export * from "./components/ui/textField/multipleLines";
 export * from "./components/ui/IconSelector";
+export * from "./components/ui/DBList";
 
 // Utils
 export * from "./utils";

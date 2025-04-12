@@ -1,7 +1,7 @@
 import React from 'react';
 import { Meta, StoryObj } from '@storybook/react';
 import { IconSelector } from './IconSelector';
-import { SearchIcon, AddIcon, EditIcon, TrashIcon } from '../../icons';
+import { FolderIcon, ImageIcon, FileTextIcon } from 'lucide-react';
 
 const meta = {
   title: 'UI/IconSelector',
@@ -12,19 +12,16 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     icon: {
-      control: 'select',
-      options: ['search', 'add', 'edit', 'trash'],
-      mapping: {
-        search: <SearchIcon />,
-        add: <AddIcon />,
-        edit: <EditIcon />,
-        trash: <TrashIcon />,
-      },
-      description: "The icon to display",
+      control: false,
+      description: 'Icon component to display (ReactNode)'
     },
     selected: {
-      control: "boolean",
-      description: "Whether the icon is selected",
+      control: 'boolean',
+      description: 'Whether the icon is selected'
+    },
+    className: {
+      control: 'text',
+      description: 'Additional class names'
     },
     onClick: { action: 'clicked' },
   },
@@ -35,35 +32,41 @@ type Story = StoryObj<typeof IconSelector>;
 
 export const Default: Story = {
   args: {
-    icon: <SearchIcon />,
+    icon: <FolderIcon size={20} />,
     selected: false,
   },
 };
 
 export const Selected: Story = {
   args: {
-    icon: <SearchIcon />,
+    icon: <FolderIcon size={20} />,
     selected: true,
   },
 };
 
-export const AddIconVariant: Story = {
+export const ImageIconExample: Story = {
   args: {
-    icon: <AddIcon />,
+    icon: <ImageIcon size={20} />,
     selected: false,
   },
 };
 
-export const EditIconVariant: Story = {
+export const FileIconExample: Story = {
   args: {
-    icon: <EditIcon />,
-    selected: false,
+    icon: <FileTextIcon size={20} />,
+    selected: true,
   },
 };
 
-export const TrashIconVariant: Story = {
-  args: {
-    icon: <TrashIcon />,
-    selected: false,
-  },
+export const IconGrid: Story = {
+  render: () => (
+    <div className="grid grid-cols-3 gap-4">
+      <IconSelector icon={<FolderIcon size={20} />} />
+      <IconSelector icon={<ImageIcon size={20} />} />
+      <IconSelector icon={<FileTextIcon size={20} />} />
+      <IconSelector icon={<FolderIcon size={20} />} selected />
+      <IconSelector icon={<ImageIcon size={20} />} selected />
+      <IconSelector icon={<FileTextIcon size={20} />} selected />
+    </div>
+  ),
 };

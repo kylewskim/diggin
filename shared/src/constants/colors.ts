@@ -38,6 +38,22 @@ export const colors = {
       light: '#00000080', // black 50% opacity
       dark: '#FFFFFF80',  // white 50% opacity
     },
+    hover: {
+      primary: {
+        light: '#393939', // gray-50
+        dark: '#FFFFFF',  // gray-850
+      },
+      secondary: {
+        light: '#F4F4F4', // gray-50
+        dark: '#2B2B2B',  // gray-850
+      }
+    },
+    selected: {
+      secondary: {
+        light: '#DDDDDD', // gray-200
+        dark: 'FFFFFF',  // gray-850
+      }
+    },
     error: '#FF5151',
   },
   line: {
