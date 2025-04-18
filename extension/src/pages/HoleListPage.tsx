@@ -6,6 +6,7 @@ import * as Icons from '@shared/icons';
 import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserHoles } from '@shared/services/holeService';
+import { getHoleSessions } from '@shared/services/sessionService';
 import { Hole } from '@shared/models/types';
 
 // 아이콘 ID로 아이콘 가져오기
@@ -85,11 +86,23 @@ const HoleListPage = () => {
     setSelectedHole(holeId);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selectedHole) {
-      // TODO: 나중에 세션이 있는지 확인하는 로직 추가 필요
-      // 지금은 단순히 EmptySessionPage로 이동
-      navigate('/empty-session', { state: { holeId: selectedHole } });
+      try {
+        // 선택한 Hole의 세션 목록 가져오기
+        const sessions = await getHoleSessions(selectedHole);
+        
+        // 세션이 있으면 SessionListPage로, 없으면 EmptySessionPage로 이동
+        if (sessions.length > 0) {
+          navigate('/session-list', { state: { holeId: selectedHole } });
+        } else {
+          navigate('/empty-session', { state: { holeId: selectedHole } });
+        }
+      } catch (error) {
+        console.error('세션 목록 가져오기 실패:', error);
+        // 에러 발생 시 기본적으로 EmptySessionPage로 이동
+        navigate('/empty-session', { state: { holeId: selectedHole } });
+      }
     }
   };
 
@@ -116,7 +129,7 @@ const HoleListPage = () => {
   if (loading) {
     return (
       <div className="w-80 h-96 bg-white dark:bg-black flex items-center justify-center">
-        <p className="text-text-primary-light dark:text-text-primary-dark">로딩 중...</p>
+        <p className="text-text-primary-light dark:text-text-primary-dark">Loading</p>
       </div>
     );
   }
@@ -124,7 +137,7 @@ const HoleListPage = () => {
   return (
     <div className="w-80 h-96 bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
       {/* Top Navigation */}
-      <div className="self-stretch h-12 pl-5 pr-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
+      <div className="self-stretch h-[52px] pl-5 pr-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
         <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-base font-medium leading-snug">
           Diggin
         </div>
@@ -185,7 +198,7 @@ const HoleListPage = () => {
                 size="lg"
                 disabled={!selectedHole}
                 onClick={handleNext}
-                className="self-stretch h-[52px] min-w-24 px-5 rounded-lg flex justify-center items-center"
+                className="self-stretch h-[52px] min-w-[240px] px-5 rounded-lg flex justify-center items-center"
               >
                 Next
               </Button>

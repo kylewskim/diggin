@@ -155,7 +155,7 @@ const EmptySessionPage: React.FC = () => {
             <Button
                 variant="tertiary"
                 size="sm"
-                onClick={handleBackClick}
+                onClick={handleCreateSession}
                 leftIcon={<Icons.AddIcon />}
                 showLeftIcon
             >
