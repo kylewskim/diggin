@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { signInWithGoogle } from '@shared/services/auth';
+// 확장 프로그램 서비스 import
+import { signInWithGoogle } from '../services/auth';
 import { getUserHoles } from '@shared/services/holeService';
 
 const LoginPage: React.FC = () => {
@@ -40,7 +41,7 @@ const LoginPage: React.FC = () => {
       <div className="self-stretch flex-1 flex flex-col justify-center items-center gap-6">
         <div className="w-40 h-40 bg-gray-200 rounded-[100px]" />
         <div className="text-body-lg-md text-center justify-center leading-snug text-text-primary-light">
-          To start diggin,<br/>log in or create a new account.
+          To start diggin,<br/>log in with your Google account.
         </div>
         
         {error && (

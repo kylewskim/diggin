@@ -24,6 +24,7 @@ export interface Session {
   startTime: Timestamp;
   endTime: Timestamp | null;
   isActive: boolean;
+  totalDuration?: number;
 }
 
 export interface TextEntry {

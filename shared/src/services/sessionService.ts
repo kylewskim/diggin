@@ -26,7 +26,9 @@ export const createSession = async (holeId: string, name: string): Promise<strin
       name,
       startTime: now,
       endTime: null,
-      isActive: true
+      isActive: true,
+      totalDuration: 0,
+      updatedAt: now
     });
     
     return docRef.id;
@@ -134,6 +136,48 @@ export const endSession = async (sessionId: string): Promise<void> => {
     });
   } catch (error) {
     console.error("Error ending session:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates session duration (total time spent).
+ */
+export const updateSessionDuration = async (sessionId: string, durationInSeconds: number): Promise<void> => {
+  try {
+    const docRef = doc(db, 'sessions', sessionId);
+    await updateDoc(docRef, {
+      totalDuration: durationInSeconds,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error updating session duration:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates session active status and sets the current endTime.
+ */
+export const updateSessionActiveStatus = async (sessionId: string, isActive: boolean): Promise<void> => {
+  try {
+    const docRef = doc(db, 'sessions', sessionId);
+    
+    if (isActive) {
+      // 세션 재개
+      await updateDoc(docRef, {
+        isActive: true,
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      // 세션 일시 중지
+      await updateDoc(docRef, {
+        isActive: false,
+        updatedAt: serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error("Error updating session active status:", error);
     throw error;
   }
 }; 

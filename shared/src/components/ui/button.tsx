@@ -103,16 +103,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // }
     const iconColorStyles = {
       primary: cn(
-        '[&_svg]:text-icon-inverted-light dark:[&_svg]:text-icon-inverted-dark',
-        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+        '[&>svg]:text-icon-inverted-light dark:[&>svg]:text-icon-inverted-dark',
+        'disabled:[&>svg]:text-icon-disabled-light dark:disabled:[&>svg]:text-icon-disabled-dark'
       ),
       secondary: cn(
-        '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+        '[&>svg]:text-icon-primary-light dark:[&>svg]:text-icon-primary-dark',
+        'disabled:[&>svg]:text-icon-disabled-light dark:disabled:[&>svg]:text-icon-disabled-dark'
       ),
       tertiary: cn(
-        '[&_svg]:text-icon-primary-light dark:[&_svg]:text-icon-primary-dark',
-        'disabled:[&_svg]:text-icon-disabled-light dark:disabled:[&_svg]:text-icon-disabled-dark'
+        '[&>svg]:text-icon-primary-light dark:[&>svg]:text-icon-primary-dark',
+        'disabled:[&>svg]:text-icon-disabled-light dark:disabled:[&>svg]:text-icon-disabled-dark'
       )
     }
 

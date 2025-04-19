@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Diggin",
   "version": "1.0.0",
-  "description": "Save and organize your web clippings",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "description": "A Chrome extension for Diggin",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx/Ey1lNuHpVH6e5kddxEPjNVbGK93A7w0UcfQz35QpOUbVjOHGRCX51eULXAq+GY/pvOeWxNBTMjPRhnvGnClfQazvtSbKleJnBm47pcbhKu3N23lguml63eYt8maFISSpUCssL3bjYf8Egjqh4KyHEwf/YdAf4Qi/4qPmwssJbpKFw53mu6fy1g+CjP3GGQeejGyNU8gfIFI1EOf5E4/Qo0SU9iVTl27qHWbvf8MBtRhoLrn3PTeGia7dC1n4/iSk/dUON2mr13nqs390fQaxEp4CPMQ+RSSUFpI5NfsQHgwLnWgV/VMssWtx0gWIoZH6rjUBowOv1PntbqiAX6QwIDAQAB",
   "action": {
     "default_popup": "index.html",
     "default_icon": {
@@ -12,9 +12,20 @@
       "128": "icon-128.png"
     }
   },
+  "permissions": [
+    "storage",
+    "identity"
+  ],
   "icons": {
     "16": "icon-16.png",
     "48": "icon-48.png",
     "128": "icon-128.png"
+  },
+  "oauth2": {
+    "client_id": "175967632049-v617c2uu6d3me1o4ititk2bb6uuvm624.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
   }
 } 
