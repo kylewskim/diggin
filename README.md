@@ -86,6 +86,11 @@ The application uses the following data model:
 
 For more details on the backend implementation, see [Backend Documentation](./shared/src/services/README.md).
 
+### Progress
+- Completed most components used on extension
+- Migrating web-based version to chrome extension
+- Handling login issue (Google-firebase login crash)
+
 ## Contact Information
 - Lead Developer & Designer: Zeyi Chen
 - Email: zeyi19@uw.edu
