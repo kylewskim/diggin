@@ -87,7 +87,7 @@ The application uses the following data model:
 For more details on the backend implementation, see [Backend Documentation](./shared/src/services/README.md).
 
 ## Contact Information
-- Lead Developer & Designer: Kyle Kim
-- Email: kylewkim@uw.edu
-- GitHub: github.com/kylewskim
-- Client Contact: Zeyi Chen
+- Lead Developer & Designer: Zeyi Chen
+- Email: zeyi19@uw.edu
+- GitHub: github.com/babu111
+- Client Contact: Kyle Kim
