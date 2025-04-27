@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DBList } from 'shared/src/components/ui/DBList';
-import { Button } from 'shared/src/components/ui/button';
+import { DBList } from '@shared/components/ui/DBList';
+import { Button } from '@shared/components/ui/button';
 import * as Icons from '@shared/icons';
 import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
