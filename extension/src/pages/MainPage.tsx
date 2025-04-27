@@ -79,7 +79,7 @@ const MainPage: React.FC = () => {
   // 로딩 중 표시
   if (loading) {
     return (
-      <div className="w-80 h-96 flex items-center justify-center bg-Surface-Main">
+      <div className="w-80 h-[400px] flex items-center justify-center bg-Surface-Main">
         <p className="text-body-lg-md">로딩 중...</p>
       </div>
     );
@@ -88,7 +88,7 @@ const MainPage: React.FC = () => {
   // 선택된 hole이 있는 경우 hole 정보 표시
   if (selectedHole) {
     return (
-      <div className="w-80 h-96 pt-4 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
+      <div className="w-80 h-[400px] pt-4 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
         <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
           <div className="w-full flex justify-between items-center px-4 mb-4">
             <button 
@@ -126,7 +126,7 @@ const MainPage: React.FC = () => {
 
   // 선택된 hole이 없는 경우 새 hole 생성 화면 표시
   return (
-    <div className="w-80 h-96 pt-8 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
+    <div className="w-80 h-[400px] pt-8 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
       <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
         <div className="w-full flex justify-between items-center px-4">
           <div className="text-body-lg-md text-center justify-center text-text-primary-light text-base leading-snug">

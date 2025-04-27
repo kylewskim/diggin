@@ -128,14 +128,14 @@ const HoleListPage = () => {
   // 로딩 중 표시
   if (loading) {
     return (
-      <div className="w-80 h-96 bg-white dark:bg-black flex items-center justify-center">
+      <div className="w-80 h-[400px] bg-white dark:bg-black flex items-center justify-center">
         <p className="text-text-primary-light dark:text-text-primary-dark">Loading</p>
       </div>
     );
   }
 
   return (
-    <div className="w-80 h-96 bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
+    <div className="w-80 h-[400px] bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
       {/* Top Navigation */}
       <div className="self-stretch h-[52px] pl-5 pr-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
         <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-base font-medium leading-snug">

@@ -125,14 +125,14 @@ const CreateHolePage: React.FC = () => {
   // 로딩 중 표시
   if (loading) {
     return (
-      <div className="dark w-80 h-96 bg-surface-bg-dark flex items-center justify-center">
+      <div className="dark w-80 h-[400px] bg-surface-bg-dark flex items-center justify-center">
         <p className="text-text-primary-light dark:text-text-primary-dark">로딩 중...</p>
       </div>
     );
   }
 
   return (
-    <div className="dark w-80 h-96 pt-8 bg-surface-bg-dark inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
+    <div className="dark w-80 h-[400px] pt-8 bg-surface-bg-dark inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
       <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
         <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-body-lg-md">
           What do you diggin?

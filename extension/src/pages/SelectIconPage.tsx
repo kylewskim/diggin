@@ -122,14 +122,14 @@ const SelectIconPage: React.FC = () => {
   // 로딩 중 표시
   if (loading) {
     return (
-      <div className="dark w-80 h-96 bg-surface-bg-dark flex items-center justify-center">
+      <div className="dark w-80 h-[400px] bg-surface-bg-dark flex items-center justify-center">
         <p className="text-text-primary-dark">로딩 중...</p>
       </div>
     );
   }
 
   return (
-    <div className="dark w-80 h-96 bg-surface-bg-dark inline-flex flex-col justify-between items-center overflow-hidden">
+    <div className="dark w-80 h-[400px] bg-surface-bg-dark inline-flex flex-col justify-between items-center overflow-hidden">
       {/* 헤더 */}
       <div className="self-stretch h-12 px-3 py-3 border-b border-color-line-tertiary dark:border-color-line-tertiary inline-flex justify-between items-center">
         <Button

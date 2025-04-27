@@ -106,7 +106,7 @@ const SessionListPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="w-80 h-96 bg-white dark:bg-black flex items-center justify-center">
+      <div className="w-80 h-[400px] bg-white dark:bg-black flex items-center justify-center">
         <p className="text-text-primary-light dark:text-text-primary-dark">로딩 중...</p>
       </div>
     );
@@ -114,7 +114,7 @@ const SessionListPage: React.FC = () => {
 
   if (error || !hole) {
     return (
-      <div className="w-80 h-96 bg-white dark:bg-black flex flex-col items-center justify-center p-4">
+      <div className="w-80 h-[400px] bg-white dark:bg-black flex flex-col items-center justify-center p-4">
         <p className="text-red-500 mb-4">{error || '홀을 찾을 수 없습니다.'}</p>
         <Button variant="secondary" size="md" onClick={handleBackClick}>
           Back
@@ -124,7 +124,7 @@ const SessionListPage: React.FC = () => {
   }
 
   return (
-    <div className="w-80 h-96 bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
+    <div className="w-80 h-[400px] bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
       {/* Top Navigation */}
       <div className="self-stretch h-12 px-3 border-b border-line-tertiary-light dark:border-line-tertiary-dark inline-flex justify-between items-center">
         <div className="flex justify-start items-center gap-3">
