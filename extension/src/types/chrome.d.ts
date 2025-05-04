@@ -13,3 +13,7 @@ declare namespace chrome {
     function launchWebAuthFlow(options: { url: string; interactive: boolean }, callback: (responseUrl?: string) => void): void;
   }
 } 
+ 
+ 
+ 
+ 

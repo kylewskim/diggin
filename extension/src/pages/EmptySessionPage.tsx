@@ -62,7 +62,7 @@ const EmptySessionPage: React.FC = () => {
 
   const handleSeeAllTemplates = () => {
     // 모든 템플릿 보기 페이지로 이동
-    console.log('See all templates');
+    navigate('/template-list', { state: { holeId: state.holeId } });
   };
 
   const handleTemplateSelect = (templateId: string) => {
@@ -185,7 +185,7 @@ const EmptySessionPage: React.FC = () => {
           {/* Template Cards */}
           <div className="self-stretch inline-flex justify-start items-center gap-3 overflow-x-auto">
             <div 
-              className="w-36 h-24 p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer"
+              className="w-36 h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer"
               onClick={() => handleTemplateSelect('design-thinking')}
             >
               <div className="self-stretch flex flex-col justify-start items-start gap-1">
@@ -202,14 +202,14 @@ const EmptySessionPage: React.FC = () => {
             </div>
             
             <div 
-              className="w-36 h-24 p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer"
+              className="w-36 h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer"
               onClick={() => handleTemplateSelect('double-diamond')}
             >
               <div className="self-stretch flex flex-col justify-start items-start gap-1">
                 <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
                   💎 💎
                 </div>
-                <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-xs font-medium leading-none truncate">
+                <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
                   Double Diamond
                 </div>
               </div>

@@ -9,6 +9,7 @@ import EmptySessionPage from './pages/EmptySessionPage';
 import CreateSessionPage from './pages/CreateSessionPage';
 import SessionListPage from './pages/SessionListPage';
 import OnSessionPage from './pages/OnSessionPage';
+import TemplateListPage from './pages/TemplateListPage';
 import { auth } from '@shared/firebase';
 import { onAuthStateChange, getAuthStateFromStorage } from './services/auth';
 import { getUserHoles } from '@shared/services/holeService';
@@ -86,6 +87,7 @@ const App: React.FC = () => {
           <Route path="/session" element={
             user ? <OnSessionPage /> : <Navigate to="/" replace />
           } />
+          <Route path="/template-list" element={<TemplateListPage />} />
           <Route path="*" element={<Navigate to={user ? initialRoute : "/"} replace />} />
         </Routes>
       </div>

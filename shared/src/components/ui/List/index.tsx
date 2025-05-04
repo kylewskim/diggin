@@ -12,3 +12,8 @@ export type { ListProps, ListType, ListState };
 // 각 컴포넌트 별도 내보내기
 export { ExtensionList };
 // export { WebList }; // 웹 버전이 생기면 추가 
+ 
+ 
+ 
+ 
+ 

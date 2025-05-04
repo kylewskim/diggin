@@ -37,3 +37,7 @@ export interface TextEntry {
   isBookmarked: boolean;
   tags?: string[];
 } 
+ 
+ 
+ 
+ 

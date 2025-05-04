@@ -3,20 +3,31 @@
 .custom-scrollbar {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: #393939 transparent; /* line-tertiary dark */
+}
+
+/* 라이트 모드 스크롤바 색상 */
+:root {
+  --scrollbar-thumb-color: #D2D2D2;
+  --scrollbar-track-color: transparent;
+}
+
+/* 다크 모드 스크롤바 색상 */
+.dark, [data-theme="dark"] {
+  --scrollbar-thumb-color: #393939;
+  --scrollbar-track-color: transparent;
 }
 
 /* 스크롤바 기본 설정 */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px !important;
   height: 4px !important;
-  background-color: transparent !important;
+  background-color: var(--scrollbar-track-color) !important;
   margin-top: 4px !important;
 }
 
 /* 스크롤바 트랙 */
 .custom-scrollbar::-webkit-scrollbar-track {
-  background-color: transparent !important;
+  background-color: var(--scrollbar-track-color) !important;
   border-radius: 2px !important;
   width: 4px !important;
   margin-top: 4px !important;
@@ -25,8 +36,8 @@
 
 /* 스크롤바 썸 */
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #393939 !important; /* line-tertiary dark */
-  border-radius: 2px !important;
+  background-color: var(--scrollbar-thumb-color) !important;
+  border-radius: 0px !important;
   width: 4px !important;
   max-width: 4px !important;
   min-width: 4px !important;
@@ -39,7 +50,8 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,
 .custom-scrollbar::-webkit-scrollbar-thumb:active,
 .custom-scrollbar::-webkit-scrollbar-thumb:focus {
-  background-color: #393939 !important;
+  background-color: var(--scrollbar-thumb-color) !important;
+  opacity: 0.8 !important;
   width: 4px !important;
   max-width: 4px !important;
   min-width: 4px !important;
@@ -62,5 +74,5 @@
 /* Firefox 스크롤바 스타일 */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #393939 transparent; /* line-tertiary dark */
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
 } 

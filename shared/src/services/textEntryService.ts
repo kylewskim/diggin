@@ -205,3 +205,7 @@ const extractDomain = (url: string): string => {
     return url; // Return the original URL if parsing fails
   }
 }; 
+ 
+ 
+ 
+ 

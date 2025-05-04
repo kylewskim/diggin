@@ -131,7 +131,7 @@ const SelectIconPage: React.FC = () => {
   return (
     <div className="dark w-80 h-[400px] bg-surface-bg-dark inline-flex flex-col justify-between items-center overflow-hidden">
       {/* 헤더 */}
-      <div className="self-stretch h-12 px-3 py-3 border-b border-color-line-tertiary dark:border-color-line-tertiary inline-flex justify-between items-center">
+      <div className="self-stretch h-13 px-3 py-3 border-b border-line-tertiary-dark inline-flex justify-between items-center">
         <Button
           variant="tertiary"
           size="sm"

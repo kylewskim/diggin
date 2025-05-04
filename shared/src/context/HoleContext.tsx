@@ -308,3 +308,7 @@ export const HoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   return <HoleContext.Provider value={value}>{children}</HoleContext.Provider>;
 }; 
+ 
+ 
+ 
+ 

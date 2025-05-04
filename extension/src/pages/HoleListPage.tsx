@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getUserHoles } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
 import { Hole } from '@shared/models/types';
+import './scrollbar.css'; // 스크롤바 스타일 추가
 
 // 아이콘 ID로 아이콘 가져오기
 const getIconById = (iconId: string): React.ReactNode => {
@@ -94,7 +95,8 @@ const HoleListPage = () => {
         
         // 세션이 있으면 SessionListPage로, 없으면 EmptySessionPage로 이동
         if (sessions.length > 0) {
-          navigate('/session-list', { state: { holeId: selectedHole } });
+          // navigate('/session-list', { state: { holeId: selectedHole } });
+          navigate('/create-session', { state: { holeId: selectedHole } });
         } else {
           navigate('/empty-session', { state: { holeId: selectedHole } });
         }
@@ -135,8 +137,8 @@ const HoleListPage = () => {
   }
 
   return (
-    <div className="w-80 h-[400px] bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
-      {/* Top Navigation */}
+    <div className="w-80 h-[400px] bg-white dark:bg-black inline-flex flex-col justify-between items-center overflow-hidden">
+      {/* Top Navigation - 고정 */}
       <div className="self-stretch h-[52px] pl-5 pr-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
         <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-base font-medium leading-snug">
           Diggin
@@ -161,16 +163,18 @@ const HoleListPage = () => {
         </div>
       </div>
 
-      {/* Database List */}
-      <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
-        {error ? (
-          <div className="text-red-500 text-sm text-center px-4 py-8">
-            {error}
-          </div>
-        ) : (
-          <>
-            <div className="self-stretch p-2 relative flex flex-col justify-start items-start gap-2 overflow-auto max-h-[calc(100%-60px)]">
-              {holes.length > 0 ? (
+      {/* 스크롤 가능한 리스트 영역 - 남은 공간 모두 차지 */}
+      <div className="self-stretch flex-1 overflow-hidden">
+        {/* 스크롤바를 위한 오른쪽 여백 */}
+        <div className="h-full flex mr-1">
+          {/* 스크롤 영역 */}
+          <div className="h-full w-full overflow-y-auto custom-scrollbar">
+            <div className="p-2 flex flex-col justify-start items-start gap-2">
+              {error ? (
+                <div className="text-red-500 text-sm text-center px-4 py-8 w-full">
+                  {error}
+                </div>
+              ) : holes.length > 0 ? (
                 holes.map((hole) => (
                   <DBList
                     key={hole.id}
@@ -183,28 +187,29 @@ const HoleListPage = () => {
                   />
                 ))
               ) : (
-                <div className="self-stretch py-8 flex justify-center items-center">
+                <div className="self-stretch py-8 flex justify-center items-center w-full">
                   <p className="text-text-secondary-light dark:text-text-secondary-dark">
                     No holes found. Create a new one!
                   </p>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Bottom Button */}
-            <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2.5">
-              <Button
-                variant="primary"
-                size="lg"
-                disabled={!selectedHole}
-                onClick={handleNext}
-                className="self-stretch h-[52px] min-w-[240px] px-5 rounded-lg flex justify-center items-center"
-              >
-                Next
-              </Button>
-            </div>
-          </>
-        )}
+      {/* Bottom Button - 고정 */}
+      <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2.5">
+        <Button
+          variant="primary"
+          size="lg"
+          disabled={!selectedHole}
+          onClick={handleNext}
+          className="self-stretch"
+          // className="self-stretch h-[52px] min-w-[240px] px-5 rounded-lg flex justify-center items-center"
+        >
+          Next
+        </Button>
       </div>
     </div>
   );

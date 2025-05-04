@@ -430,7 +430,7 @@ const OnSessionPage: React.FC = () => {
           <div className="inline-flex justify-start items-center gap-3">
             <button
               onClick={toggleSession}
-              className="w-12 h-12 p-3 bg-fill-primary-light dark:bg-fill-primary-dark rounded-[20px] flex justify-center items-center gap-2.5"
+              className="w-12 h-12 p-3 bg-fill-primary-light dark:bg-fill-primary-dark text-icon-inverted-light dark:text-icon-inverted-dark rounded-[20px] flex justify-center items-center gap-2.5"
             >
               {isActive ? (
                 <Icons.PauseIcon className="w-6 h-6 text-icon-inverted-light dark:text-icon-inverted-dark" />
@@ -440,10 +440,9 @@ const OnSessionPage: React.FC = () => {
             </button>
             
             <button
-              className="w-12 h-12 p-2.5 bg-fill-onsurface-light dark:bg-fill-onsurface-dark rounded-[20px] flex justify-center items-center gap-2.5"
+              className="w-12 h-12 p-3 bg-fill-onsurface-light dark:bg-fill-onsurface-dark rounded-[20px] flex justify-center items-center"
             >
-              <Icons.LightbulbIcon className="w-6 h-6 text-icon-primary-light dark:text-icon-primary-dark" />
-            </button>
+              <Icons.StopIcon className="w-6 h-6 text-icon-inverted-light dark:text-icon-inverted-dark" />            </button>
           </div>
         </div>
       </div>

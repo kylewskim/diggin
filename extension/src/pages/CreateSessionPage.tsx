@@ -83,7 +83,8 @@ const CreateSessionPage: React.FC = () => {
   }, [navigate, state]);
 
   const handleBackClick = () => {
-    navigate('/empty-session', { state: { holeId: state.holeId } });
+    // navigate('/empty-session', { state: { holeId: state.holeId } });
+    navigate('/hole-list');
   };
 
   const handleSessionNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
