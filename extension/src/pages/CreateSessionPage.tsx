@@ -169,7 +169,7 @@ const CreateSessionPage: React.FC = () => {
   return (
     <div className="w-80 h-[400px] bg-white dark:bg-black inline-flex flex-col justify-start items-start overflow-hidden">
       {/* Top Navigation */}
-      <div className="self-stretch h-12 px-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
+      <div className="self-stretch h-[52px] px-3 border-b border-color-line-tertiary inline-flex justify-between items-center">
         <div className="flex justify-start items-center gap-3">
           <div className="rounded flex justify-start items-center gap-2">
             <Button
@@ -211,35 +211,43 @@ const CreateSessionPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="h-80 rounded-2xl flex flex-col justify-between items-center w-full">
-        <div className="w-80 flex-1 inline-flex justify-center items-start">
-          <div className="flex-1 px-2 pt-2 inline-flex flex-col justify-start items-start gap-2 overflow-auto max-h-full">
-            {isCreatingMode ? (
-              <List
-                type="add"
-                state={sessionName ? 'active' : 'default'}
-                label=""
-                value={sessionName}
-                onChange={handleSessionNameChange}
-                onCancel={handleCancelClick}
-                onSubmit={handleSubmitClick}
-                placeholder="Write a new session name"
-              />
-            ) : null}
+      <div className="h-[348px] rounded-2xl flex flex-col justify-between items-center w-full">
+        {/* 스크롤 가능한 리스트 영역 - 남은 공간 모두 차지 */}
+        <div className="self-stretch flex-1 overflow-hidden">
+          {/* 스크롤바를 위한 오른쪽 여백 */}
+          <div className="h-full flex mr-1">
+            {/* 스크롤 영역 */}
+            <div className="h-full w-full overflow-y-auto custom-scrollbar">
+              <div className="p-2 flex flex-col justify-start items-start gap-2">
+                {isCreatingMode ? (
+                  <List
+                    type="add"
+                    state={sessionName ? 'active' : 'default'}
+                    label=""
+                    value={sessionName}
+                    onChange={handleSessionNameChange}
+                    onCancel={handleCancelClick}
+                    onSubmit={handleSubmitClick}
+                    placeholder="Write a new session name"
+                  />
+                ) : null}
 
-            {sessions.map(session => (
-              <List
-                key={session.id}
-                type="default"
-                state={listHoverState === session.id ? 'hover' : 'default'}
-                label={session.name}
-                count={session.insightCount}
-                onClick={() => handleListClick(session.id)}
-              />
-            ))}
+                {sessions.map(session => (
+                  <List
+                    key={session.id}
+                    type="default"
+                    state={listHoverState === session.id ? 'hover' : 'default'}
+                    label={session.name}
+                    count={session.insightCount}
+                    onClick={() => handleListClick(session.id)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Bottom Button - 고정 */}
         {!isCreatingMode && sessions.length > 0 && (
           <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2.5">
             <Button

@@ -5,7 +5,7 @@ import * as Icons from '@shared/icons';
 import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getHole } from '@shared/services/holeService';
-import { getSession, updateSessionDuration, updateSessionActiveStatus } from '@shared/services/sessionService';
+import { getSession, updateSessionDuration, updateSessionActiveStatus, updateSession } from '@shared/services/sessionService';
 import { createTextEntry, getSessionEntries } from '@shared/services/textEntryService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
 
@@ -170,6 +170,54 @@ const OnSessionPage: React.FC = () => {
     console.log("Timer started with interval ID:", timerRef.current);
   }, [session]);
 
+  const handleBackClick = () => {
+    // 뒤로 가기 시 현재 시간 저장
+    if (session && isActive) {
+      updateSessionDuration(session.id, displayDuration).catch(console.error);
+    }
+    
+    navigate('/session-list', { state: { holeId: state.holeId } });
+  };
+
+  const saveCurrentTime = async () => {
+    if (!session) return;
+    
+    try {
+      const currentDuration = calculateCurrentDuration();
+      await updateSessionDuration(session.id, currentDuration);
+      savedDurationRef.current = currentDuration;
+    } catch (err) {
+      console.error('시간 저장 실패:', err);
+    }
+  };
+
+  const finishSession = async () => {
+    console.log("finish session");
+    if (!hole || !session) return;
+
+    try {
+      // 현재 시간 저장
+      await saveCurrentTime();
+      
+      // 세션 상태를 completed로 업데이트
+      await updateSessionActiveStatus(session.id, false);
+      
+      // FinishSessionPage로 이동
+      navigate('/finish-session', {
+        state: {
+          holeId: hole.id,
+          sessionId: session.id,
+          sessionName: session.name,
+          duration: savedDurationRef.current,
+          insightCount: insightCount
+        }
+      });
+    } catch (err) {
+      console.error('세션 종료 실패:', err);
+      alert('세션을 종료하는데 실패했습니다.');
+    }
+  };
+
   // 타이머 정지 
   const stopTimer = useCallback(async () => {
     console.log(`Stopping timer. Current timer ID: ${timerRef.current}`);
@@ -321,15 +369,6 @@ const OnSessionPage: React.FC = () => {
     };
   }, [session, isActive]);
 
-  const handleBackClick = () => {
-    // 뒤로 가기 시 현재 시간 저장
-    if (session && isActive) {
-      updateSessionDuration(session.id, displayDuration).catch(console.error);
-    }
-    
-    navigate('/session-list', { state: { holeId: state.holeId } });
-  };
-
   if (loading) {
     return (
       <div className="w-80 h-[400px] bg-white dark:bg-black flex items-center justify-center">
@@ -441,8 +480,10 @@ const OnSessionPage: React.FC = () => {
             
             <button
               className="w-12 h-12 p-3 bg-fill-onsurface-light dark:bg-fill-onsurface-dark rounded-[20px] flex justify-center items-center"
+              onClick={finishSession}
             >
-              <Icons.StopIcon className="w-6 h-6 text-icon-inverted-light dark:text-icon-inverted-dark" />            </button>
+              <Icons.StopIcon className="w-6 h-6 text-icon-inverted-light dark:text-icon-inverted-dark" />
+            </button>
           </div>
         </div>
       </div>
@@ -486,4 +527,4 @@ const getIconById = (iconId: string): React.ReactNode => {
   return <Icons.InfoIcon />; // Default icon as fallback
 };
 
-export default OnSessionPage; 
+export default OnSessionPage;

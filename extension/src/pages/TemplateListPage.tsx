@@ -209,90 +209,83 @@ const TemplateListPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="h-80 rounded-2xl flex flex-col justify-between items-center w-full">
-        {/* 스크롤 가능한 리스트 영역 - 남은 공간 모두 차지 */}
-        <div className="self-stretch flex-1 overflow-hidden">
-          {/* 스크롤바를 위한 오른쪽 여백 */}
-          <div className="h-full flex mr-1">
-            {/* 스크롤 영역 */}
-            <div className="h-full w-full overflow-y-auto custom-scrollbar">
-              <div className="px-3 pt-3 flex flex-col justify-start items-start gap-2">
-                {/* Template Cards Grid */}
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <div 
-                    className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
-                      selectedTemplateId === 'design-thinking' ? 'bg-gray-50 outline-line-secondary-light' : ''
-                    }`}
-                    onClick={() => handleTemplateSelect('design-thinking')}
-                  >
-                    <div className="self-stretch flex flex-col justify-start items-start gap-1">
-                      <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
-                        🎨 💭
-                      </div>
-                      <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
-                        Design Thinking
-                      </div>
-                    </div>
-                    <div className="text-caption-md-rg self-stretch h-[32px] justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
-                      Empathize, Define, Ideate, Prototype, Test
-                    </div>
+        <div className="w-80 flex-1 inline-flex justify-center items-start">
+          <div className="flex-1 px-3 pt-3 inline-flex flex-col justify-start items-start gap-2 overflow-auto max-h-full">
+            {/* Template Cards Grid */}
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <div 
+                className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
+                  selectedTemplateId === 'design-thinking' ? 'bg-gray-50 outline-line-secondary-light' : ''
+                }`}
+                onClick={() => handleTemplateSelect('design-thinking')}
+              >
+                <div className="self-stretch flex flex-col justify-start items-start gap-1">
+                  <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
+                    🎨 💭
                   </div>
-                  
-                  <div 
-                    className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
-                      selectedTemplateId === 'double-diamond' ? 'bg-gray-50 outline-line-secondary-light' : ''
-                    }`}
-                    onClick={() => handleTemplateSelect('double-diamond')}
-                  >
-                    <div className="self-stretch flex flex-col justify-start items-start gap-1">
-                      <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
-                        💎 💎
-                      </div>
-                      <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
-                        Double Diamond
-                      </div>
-                    </div>
-                    <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
-                      Discover, Define, Develop, Deliver
-                    </div>
+                  <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
+                    Design Thinking
                   </div>
+                </div>
+                <div className="text-caption-md-rg self-stretch h-[32px] justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
+                  Empathize, Define, Ideate, Prototype, Test
+                </div>
+              </div>
+              
+              <div 
+                className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
+                  selectedTemplateId === 'double-diamond' ? 'bg-gray-50 outline-line-secondary-light' : ''
+                }`}
+                onClick={() => handleTemplateSelect('double-diamond')}
+              >
+                <div className="self-stretch flex flex-col justify-start items-start gap-1">
+                  <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
+                    💎 💎
+                  </div>
+                  <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
+                    Double Diamond
+                  </div>
+                </div>
+                <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
+                  Discover, Define, Develop, Deliver
+                </div>
+              </div>
 
-                  <div 
-                    className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
-                      selectedTemplateId === 'bm-canvas' ? 'bg-gray-50 outline-line-secondary-light' : ''
-                    }`}
-                    onClick={() => handleTemplateSelect('bm-canvas')}
-                  >
-                    <div className="self-stretch flex flex-col justify-start items-start gap-1">
-                      <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
-                        💼 📋
-                      </div>
-                      <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
-                        BM Canvas
-                      </div>
-                    </div>
-                    <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
-                      Customer Segments, Value Propositions, Channels, Customer Relationships, Revenue Streams, Key Activities, Key Resources, Key Partners, Cost Structure
-                    </div>
+              <div 
+                className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
+                  selectedTemplateId === 'bm-canvas' ? 'bg-gray-50 outline-line-secondary-light' : ''
+                }`}
+                onClick={() => handleTemplateSelect('bm-canvas')}
+              >
+                <div className="self-stretch flex flex-col justify-start items-start gap-1">
+                  <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
+                    💼 📋
                   </div>
+                  <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
+                    BM Canvas
+                  </div>
+                </div>
+                <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
+                  Customer Segments, Value Propositions, Channels, Customer Relationships, Revenue Streams, Key Activities, Key Resources, Key Partners, Cost Structure
+                </div>
+              </div>
 
-                  <div 
-                    className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
-                      selectedTemplateId === 'jtbd' ? 'bg-gray-50 outline-line-secondary-light' : ''
-                    }`}
-                    onClick={() => handleTemplateSelect('jtbd')}
-                  >
-                    <div className="self-stretch flex flex-col justify-start items-start gap-1">
-                      <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
-                        📎 ✅
-                      </div>
-                      <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
-                        JTBD
-                      </div>
-                    </div>
-                    <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
-                      Situations, Motivations, Desired Outcomes, Functional Jobs, Emotional Jobs, Social Jobs
-                    </div>
+              <div 
+                className={`w-full h-[100px] p-3 bg-surface-bg-light dark:bg-surface-bg-dark rounded-lg outline outline-1 outline-offset-[-1px] outline-line-tertiary-light dark:outline-line-tertiary-dark inline-flex flex-col justify-start items-start gap-2 cursor-pointer ${
+                  selectedTemplateId === 'jtbd' ? 'bg-gray-50 outline-line-secondary-light' : ''
+                }`}
+                onClick={() => handleTemplateSelect('jtbd')}
+              >
+                <div className="self-stretch flex flex-col justify-start items-start gap-1">
+                  <div className="text-caption-md-md self-stretch justify-center text-text-primary-light dark:text-text-primary-dark leading-none truncate">
+                    📎 ✅
                   </div>
+                  <div className="self-stretch justify-center text-text-primary-light dark:text-text-primary-dark text-caption-md-md leading-none truncate">
+                    JTBD
+                  </div>
+                </div>
+                <div className="text-caption-md-rg self-stretch h-8 justify-center text-text-secondary-light dark:text-text-secondary-dark leading-none line-clamp-2 overflow-hidden">
+                  Situations, Motivations, Desired Outcomes, Functional Jobs, Emotional Jobs, Social Jobs
                 </div>
               </div>
             </div>
