@@ -7,6 +7,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { signOut } from '@shared/services/auth';
 import { getHole } from '@shared/services/holeService';
 import { Hole } from '@shared/models/types';
+import * as Icons from '@shared/icons';
+
 
 interface LocationState {
   holeId?: string;
@@ -67,6 +69,11 @@ const MainPage: React.FC = () => {
     }
   };
 
+  // 홀 리스트로 돌아가기
+  const handleBackClick = () => {
+    navigate('/hole-list');
+  };
+
   // 선택된 Hole로 새 세션 시작
   const handleStartSession = () => {
     if (selectedHole) {
@@ -88,57 +95,66 @@ const MainPage: React.FC = () => {
   // 선택된 hole이 있는 경우 hole 정보 표시
   if (selectedHole) {
     return (
-      <div className="w-80 h-[400px] pt-4 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
-        <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
-          <div className="w-full flex justify-between items-center px-4 mb-4">
-            <button 
-              onClick={() => navigate('/hole-list')}
-              className="text-sm text-text-primary-light hover:underline"
-            >
-              ← Back to Holes
-            </button>
-            <h1 className="text-body-lg-md font-bold text-text-primary-light">
-              {selectedHole.name}
-            </h1>
-            <div className="w-4"></div> {/* 오른쪽 여백용 */}
-          </div>
-          
-          <div className="self-stretch flex-1 flex flex-col justify-center items-center">
-            <div className="text-center text-text-secondary-light mb-4">
-              No active sessions found
-            </div>
-          </div>
-          
-          <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleStartSession}
-              className="self-stretch"
-            >
-              Start New Session
-            </Button>
+      <div className="w-80 h-[400px] pt-8 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
+      <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
+        <div className="w-full flex justify-between items-center px-4">
+          <div className="w-full text-body-lg-md text-center justify-center text-text-primary-light text-base leading-snug">
+            What do you diggin?
           </div>
         </div>
+        <div className="self-stretch flex-1 flex flex-col justify-center items-center">
+          <div className="w-40 h-40 bg-gray-200 rounded-[100px]" />
+        </div>
+        <div className="self-stretch px-2 pb-2 flex flex-col justify-start items-start gap-2">
+          <TextField 
+            size="lg"
+            isDisabled={false}
+            error={false}
+            placeholder="Write a new hole name"
+            value={holeName}
+            onChange={handleHoleNameChange}
+            className="self-stretch"
+          />
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={!holeName.trim()} // 홀 이름이 비어있으면 비활성화
+            onClick={handleCreateHole}
+            className="self-stretch"
+          >
+            Create a Hole
+          </Button>
+        </div>
       </div>
+    </div>
     );
   }
 
   // 선택된 hole이 없는 경우 새 hole 생성 화면 표시
   return (
-    <div className="w-80 h-[400px] pt-8 bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
-      <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
-        <div className="w-full flex justify-between items-center px-4">
-          <div className="text-body-lg-md text-center justify-center text-text-primary-light text-base leading-snug">
-            What do you diggin?
+    <div className="w-80 h-[400px] bg-Surface-Main inline-flex flex-col justify-start items-start overflow-hidden font-pretendard">
+      {/* Top Navigation */}
+      <div className="self-stretch h-[52px] px-3 border-b border-line-tertiary-light dark:border-line-tertiary-dark inline-flex justify-between items-center">
+        <div className="flex justify-start items-center gap-3">
+          <div className="rounded flex justify-start items-center gap-2">
+            <Button
+              variant="tertiary"
+              size="sm"
+              isIconOnly
+              onClick={handleBackClick}
+              leftIcon={<Icons.BackIcon />}
+              showLeftIcon
+            />
           </div>
-          <button 
-            onClick={handleLogout}
-            className="text-sm text-red-500 hover:text-red-700"
-          >
-            Log out
-          </button>
+          <div className="flex justify-start items-center gap-3">
+            <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-base font-medium leading-snug">
+              What do you diggin?
+            </div>
+          </div>
         </div>
+      </div>
+      
+      <div className="self-stretch flex-1 rounded-2xl flex flex-col justify-between items-center">
         <div className="self-stretch flex-1 flex flex-col justify-center items-center">
           <div className="w-40 h-40 bg-gray-200 rounded-[100px]" />
         </div>

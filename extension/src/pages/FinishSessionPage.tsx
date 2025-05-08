@@ -155,7 +155,8 @@ const FinishSessionPage: React.FC = () => {
       <div className="h-[348px] rounded-2xl flex flex-col justify-between items-center w-full">
         <div className="self-stretch flex-1 p-2">
           <div className="self-stretch px-3 py-2 bg-gray-50 rounded-lg flex flex-col justify-start items-center gap-2">
-            <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-body-lg-rg leading-none">
+            <div className="text-center justify-center text-text-primary-light dark:text-text-primary-dark text-body-lg-md
+             leading-none">
               {state.sessionName}
             </div>
             <div className="inline-flex justify-center items-center gap-2">

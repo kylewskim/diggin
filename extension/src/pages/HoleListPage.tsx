@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getUserHoles } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
 import { Hole } from '@shared/models/types';
+import { signOut } from '@shared/services/auth';
 import './scrollbar.css'; // 스크롤바 스타일 추가
 
 // 아이콘 ID로 아이콘 가져오기
@@ -87,6 +88,16 @@ const HoleListPage = () => {
     setSelectedHole(holeId);
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('로그아웃 실패:', err);
+    }
+  };
+
+
   const handleNext = async () => {
     if (selectedHole) {
       try {
@@ -158,6 +169,14 @@ const HoleListPage = () => {
             isIconOnly
             onClick={handleAddClick}
             leftIcon={<Icons.AddIcon />}
+            showLeftIcon
+          />
+          <Button
+            variant="tertiary"
+            size="sm"
+            isIconOnly
+            onClick={handleLogout}
+            leftIcon={<Icons.LogOutIcon />}
             showLeftIcon
           />
         </div>
