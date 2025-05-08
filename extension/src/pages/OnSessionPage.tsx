@@ -49,7 +49,7 @@ const OnSessionPage: React.FC = () => {
 
   // 시간 포맷팅 함수
   const formatDuration = (seconds: number): string => {
-    console.log("Formatting duration (seconds):", seconds);
+    // console.log("Formatting duration (seconds):", seconds);
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -60,7 +60,7 @@ const OnSessionPage: React.FC = () => {
       secs.toString().padStart(2, '0')
     ].join(':');
 
-    console.log(`Formatted time: ${formattedTime} (${hours}h ${minutes}m ${secs}s)`);
+    // console.log(`Formatted time: ${formattedTime} (${hours}h ${minutes}m ${secs}s)`);
     return formattedTime;
   };
 
@@ -152,11 +152,11 @@ const OnSessionPage: React.FC = () => {
     timerRef.current = window.setInterval(() => {
       setDisplayDuration(prev => {
         const newDuration = prev + 1;
-        console.log(`Timer tick: ${prev} → ${newDuration} seconds`);
+        // console.log(`Timer tick: ${prev} → ${newDuration} seconds`);
         
         // Firebase에 업데이트 (1분마다)
         if (newDuration % 60 === 0) {
-          console.log(`Updating Firebase duration to ${newDuration} seconds`);
+          // console.log(`Updating Firebase duration to ${newDuration} seconds`);
           if (session?.id) {
             updateSessionDuration(session.id, newDuration).catch(console.error);
           }
@@ -240,7 +240,7 @@ const OnSessionPage: React.FC = () => {
     // Firebase에 시간 업데이트
     if (session) {
       try {
-        console.log(`Saving final duration to Firebase: ${currentDuration} seconds`);
+        // console.log(`Saving final duration to Firebase: ${currentDuration} seconds`);
         await updateSessionDuration(session.id, currentDuration);
         await updateSessionActiveStatus(session.id, false);
         console.log("Duration saved and session marked as inactive");
@@ -307,14 +307,14 @@ const OnSessionPage: React.FC = () => {
       console.log("Component unmounting, saving final duration");
       if (session && isActive) {
         const finalDuration = displayDuration;
-        console.log(`Final duration on unmount: ${finalDuration} seconds`);
+        // console.log(`Final duration on unmount: ${finalDuration} seconds`);
         
         // 비동기 함수를 직접 호출하는 대신 즉시 실행 함수 사용
         (async () => {
           try {
-            console.log(`Saving duration on unmount: ${finalDuration} seconds`);
+            // console.log(`Saving duration on unmount: ${finalDuration} seconds`);
             await updateSessionDuration(session.id, finalDuration);
-            console.log("Duration saved on unmount");
+            // console.log("Duration saved on unmount");
           } catch (err) {
             console.error("Failed to save duration on unmount:", err);
           }
@@ -345,29 +345,78 @@ const OnSessionPage: React.FC = () => {
     };
   }, [session, isActive, displayDuration]);
 
-  // 텍스트 복사 감지 및 저장
-  useEffect(() => {
-    const handleCopy = async (event: ClipboardEvent) => {
-      if (!session || !isActive) return;
-      
-      const text = event.clipboardData?.getData('text/plain');
-      if (!text || text.trim() === '') return;
-      
-      try {
-        // 임시 구현: chrome API 대신 직접 텍스트만 저장
-        await createTextEntry(session.id, text, "unknown");
-        setInsightCount(prev => prev + 1);
-      } catch (error) {
-        console.error('텍스트 저장 실패:', error);
-      }
-    };
-
-    document.addEventListener('copy', handleCopy);
+  // 클립보드 이벤트 핸들러
+  const handleCopy = useCallback(async (e: ClipboardEvent) => {
+    console.log('Copy event detected!');
     
+    if (!session || !hole || !auth.currentUser) {
+      console.log('Missing required data:', { 
+        hasSession: !!session, 
+        hasHole: !!hole, 
+        hasUser: !!auth.currentUser 
+      });
+      return;
+    }
+
+    try {
+      // 복사된 텍스트 가져오기
+      let copiedText;
+      try {
+        copiedText = await navigator.clipboard.readText();
+      } catch (clipboardError) {
+        console.log('Failed to read clipboard:', clipboardError);
+        // clipboardData로 폴백
+        copiedText = e.clipboardData?.getData('text/plain');
+      }
+
+      if (!copiedText) {
+        console.log('No text content found in clipboard');
+        return;
+      }
+      console.log('Copied text:', copiedText);
+
+      // 현재 URL 가져오기
+      const currentUrl = window.location.href;
+      console.log('Current URL:', currentUrl);
+
+      // 텍스트 엔트리 생성
+      console.log('Creating text entry with data:', {
+        sessionId: session.id,
+        text: copiedText,
+        sourceUrl: currentUrl
+      });
+      
+      await createTextEntry(
+        session.id,
+        copiedText,
+        currentUrl
+      );
+      console.log('Text entry successfully saved to database');
+
+      // 인사이트 목록 새로고침
+      console.log('Refreshing insights list...');
+      const insightData = await getSessionEntries(session.id);
+      setInsights(insightData.entries);
+      setInsightCount(insightData.entries.length);
+      console.log('Insights list updated:', { 
+        totalInsights: insightData.entries.length,
+        latestInsight: insightData.entries[0]
+      });
+    } catch (err) {
+      console.error('Failed to save copied text:', err);
+    }
+  }, [session, hole]);
+
+  // 컴포넌트 마운트 시 이벤트 리스너 추가
+  useEffect(() => {
+    if (isActive) {
+      document.addEventListener('copy', handleCopy);
+    }
+
     return () => {
       document.removeEventListener('copy', handleCopy);
     };
-  }, [session, isActive]);
+  }, [isActive, handleCopy]);
 
   if (loading) {
     return (

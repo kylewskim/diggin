@@ -19,7 +19,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@shared/*": ["../shared/src/*"]
-    }
+    },
+    "types": ["chrome"]
   },
   "include": ["src", "../shared/src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]

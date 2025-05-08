@@ -48,8 +48,12 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, 'index.html'),
-      }
+        main: resolve(__dirname, 'index.html'),
+        background: resolve(__dirname, 'src/background.ts'),
+      },
+      output: {
+        entryFileNames: '[name].js',
+      },
     },
   },
   resolve: {
