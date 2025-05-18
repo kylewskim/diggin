@@ -7,6 +7,49 @@ import { getSessionEntries } from '@shared/services/textEntryService';
 import { Hole, Session } from '@shared/models/types';
 import { colors } from '@shared/constants/colors';
 import { Button } from '../components/Button';
+import * as Icons from '@shared/icons';
+
+// 아이콘 ID로 아이콘 가져오기
+const getIconById = (iconId: string | undefined): React.ReactNode => {
+  if (!iconId) return <Icons.InfoIcon />;
+  
+  // Utility 아이콘
+  if (iconId === 'utility-1') return <Icons.SearchIcon />;
+  if (iconId === 'utility-2') return <Icons.AddIcon />;
+  if (iconId === 'utility-3') return <Icons.EditIcon />;
+  if (iconId === 'utility-4') return <Icons.TrashIcon />;
+  if (iconId === 'utility-5') return <Icons.CheckIcon />;
+  if (iconId === 'utility-6') return <Icons.CloseIcon />;
+  if (iconId === 'utility-7') return <Icons.InfoIcon />;
+  if (iconId === 'utility-8') return <Icons.LinkIcon />;
+  if (iconId === 'utility-9') return <Icons.SettingIcon />;
+  if (iconId === 'utility-10') return <Icons.FilterIcon />;
+  
+  // Media 아이콘
+  if (iconId === 'media-1') return <Icons.PlayIcon />;
+  if (iconId === 'media-2') return <Icons.PauseIcon />;
+  if (iconId === 'media-3') return <Icons.StopIcon />;
+  if (iconId === 'media-4') return <Icons.ArchiveIcon />;
+  if (iconId === 'media-5') return <Icons.HideTabIcon />;
+  if (iconId === 'media-6') return <Icons.HighlightIcon />;
+  if (iconId === 'media-7') return <Icons.SortIcon />;
+  if (iconId === 'media-8') return <Icons.ReorderIcon />;
+  if (iconId === 'media-9') return <Icons.OverflowIcon />;
+  if (iconId === 'media-10') return <Icons.ChevronRightIcon />;
+  
+  // Other 아이콘
+  if (iconId === 'other-1') return <Icons.TimeIcon />;
+  if (iconId === 'other-2') return <Icons.HourglassIcon />;
+  if (iconId === 'other-3') return <Icons.LightbulbIcon />;
+  if (iconId === 'other-4') return <Icons.TripleStarsIcon />;
+  if (iconId === 'other-5') return <Icons.BackIcon />;
+  
+  // 기본 아이콘으로 LightbulbIcon 반환
+  if (iconId === 'default-icon') return <Icons.LightbulbIcon />;
+
+  console.warn('Icon ID not found:', iconId);
+  return <Icons.InfoIcon />; // Default icon as fallback
+};
 
 export default function HoleListPage() {
   const { user, logOut } = useAuth();
@@ -251,11 +294,11 @@ export default function HoleListPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 relative">
-                          <div className="w-3 h-4 left-[4.17px] top-[1.67px] absolute bg-gray-900"></div>
+                        <div className="w-5 h-5 relative flex items-center justify-center text-gray-950">
+                          {getIconById(hole.icon)}
                         </div>
                         <span className="text-gray-950 text-base font-medium font-['Pretendard']">{hole.name}</span>
-                        <span className="text-gray-300 text-base font-medium font-['Pretendard']">
+                        <span className="text-gray-500 text-base font-medium font-['Pretendard']">
                           {loadingInsights ? (
                             <span className="text-gray-200">...</span>
                           ) : (
@@ -275,10 +318,8 @@ export default function HoleListPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="w-7 h-7 flex justify-center items-center">
-                        <div className="w-4 h-4 relative">
-                          <div className="w-[2.67px] h-3 left-[6.67px] top-[2px] absolute bg-gray-900"></div>
-                        </div>
+                      <div className="w-7 h-7 flex justify-center items-center text-gray-950">
+                        <Icons.ChevronRightIcon />
                       </div>
                     </td>
                   </tr>
