@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { auth, db } from '@shared/firebase';
-import { GoogleAuthProvider, signInWithPopup, signInWithCredential } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getUserHoles } from '@shared/services/holeService';
 import { signInWithGoogle as extensionSignIn } from '../services/auth';
@@ -18,9 +18,10 @@ const isExtensionEnvironment = (): boolean => {
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // 초기에 로딩 상태가 아님으로 변경
   const [error, setError] = useState<string | null>(null);
 
+  // 로그인 버튼 클릭 핸들러
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
@@ -39,18 +40,22 @@ const LoginPage: React.FC = () => {
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         user = result.user;
-        
-        // Firestore에 사용자 정보 저장
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          lastLogin: serverTimestamp(),
-        }, { merge: true });
+      }
+      
+      if (!user) {
+        throw new Error('No user returned from authentication');
       }
       
       console.log('로그인 성공:', user);
+      
+      // Firestore에 사용자 정보 저장
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        lastLogin: serverTimestamp(),
+      }, { merge: true });
       
       // 사용자의 Hole 목록 확인
       const userHoles = await getUserHoles(user.uid);

@@ -1,16 +1,116 @@
-import { getTailwindColors } from '@diggin/shared/src/constants/colors'
+import { getTailwindColors } from '../shared/src/constants/colors'
 
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "../shared/src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx,css}",
+    "../shared/src/**/*.{js,ts,jsx,tsx,css}",
+  ],
+  safelist: [
+    // Title
+    'text-title-xlg',
+    'text-title-lg',
+    'text-title-md',
+    'text-title-sm',
+  
+    // Body
+    'text-body-lg',
+    'text-body-lg-rg',
+    'text-body-lg-md',
+    'text-body-md',
+    'text-body-md-rg',
+    'text-body-md-md',
+  
+    // Caption
+    'text-caption-md',
+    'text-caption-md-rg',
+    'text-caption-md-md',
+  
+    // 중간 유틸리티들이 purge되었을 경우를 대비한 안전망
+    'text-[40px]',
+    'text-[24px]',
+    'text-[18px]',
+    'text-[17px]',
+    'text-[16px]',
+    'text-[14px]',
+    'text-[12px]',
+  
+    'leading-[50px]',
+    'leading-[30px]',
+    'leading-[24px]',
+    'leading-[22px]',
+    'leading-[18px]',
+    'leading-[16px]',
+    'leading-none',
+  
+    'tracking-[-0.4px]',
+    'tracking-[-0.24px]',
+    'tracking-[-0.18px]',
+    'tracking-[-0.17px]',
+    'tracking-[-0.16px]',
+    'tracking-[-0.14px]',
+    'tracking-[-0.12px]',
+  
+    'font-normal',
+    'font-medium',
+    'font-weight-400',
+    'font-weight-500',
+    
+    // Button 관련 클래스들
+    'text-text-inverted-light',
+    'dark:text-text-inverted-dark',
+    'bg-fill-primary-light',
+    'dark:bg-fill-primary-dark',
+    'hover:bg-gray-850',
+    'dark:hover:bg-gray-100',
+    'bg-color-surface-bg',
+    'text-icon-inverted-light',
+    'border-color-line-tertiary-light',
+    'dark:border-color-line-tertiary-dark',
+    'dark:bg-color-surface-bg',
+    'h-[32px]',
+    'h-[40px]',
+    'h-[48px]',
+    'min-w-[100px]',
+    'px-4',
+    'px-5',
+
+    // 기타 shared 컴포넌트 관련 클래스들
+    'inline-flex',
+    'items-center',
+    'justify-center',
+    'rounded-lg',
+    'transition-colors',
+    'duration-200',
+    'focus:outline-none',
+    'focus-visible:ring-2',
+    'focus-visible:ring-line-primary-light',
+    'dark:focus-visible:ring-line-primary-dark',
+    'focus-visible:ring-offset-2',
+    'relative',
+    'group',
+    'disabled:bg-fill-disabled-light',
+    'dark:disabled:bg-fill-disabled-dark',
+    'disabled:text-text-disabled-light',
+    'dark:disabled:text-text-disabled-dark',
+    'disabled:cursor-not-allowed',
+    'gap-1.5',
+    'gap-2',
+    '[&>svg]:text-icon-inverted-light',
+    'dark:[&>svg]:text-icon-inverted-dark',
+    'disabled:[&>svg]:text-icon-disabled-light',
+    'dark:disabled:[&>svg]:text-icon-disabled-dark',
+    '[&_svg]:w-4',
+    '[&_svg]:h-4'
   ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: getTailwindColors(),
+      fontFamily: {
+        'pretendard': ['Pretendard Variable', 'sans-serif'],
+      },
     },
   },
   plugins: [],

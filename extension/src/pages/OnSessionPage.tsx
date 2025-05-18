@@ -8,6 +8,8 @@ import { getHole } from '@shared/services/holeService';
 import { getSession, updateSessionDuration, updateSessionActiveStatus, updateSession } from '@shared/services/sessionService';
 import { createTextEntry, getSessionEntries } from '@shared/services/textEntryService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
+import { doc, updateDoc, Timestamp, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@shared/firebase';
 
 interface LocationState {
   holeId: string;
@@ -28,20 +30,24 @@ const OnSessionPage: React.FC = () => {
   const [displayDuration, setDisplayDuration] = useState(0); // 화면에 표시할 시간 (초)
   const [insights, setInsights] = useState<TextEntry[]>([]); // 인사이트 목록
   const [insightCount, setInsightCount] = useState(0); // 인사이트 개수
+  const [isFirstStart, setIsFirstStart] = useState(true); // 첫 시작 여부 플래그
 
   // 시간 추적을 위한 Ref
   const timerRef = useRef<number | null>(null);
   const savedDurationRef = useRef<number>(0); // Firebase에 저장된 총 누적 시간
-  const sessionStartTimeRef = useRef<number>(0); // 현재 세션 시작 시간
+  const sessionStartTimeRef = useRef<Date>(new Date()); // 현재 세션 시작 시간
+  
+  // 세션이 의도적으로 종료되었는지 추적하는 ref
+  const sessionIntentionallyEndedRef = useRef(false);
   
   // 현재 세션 시간 계산
   const calculateCurrentDuration = useCallback(() => {
-    if (!isActive || sessionStartTimeRef.current === 0) {
+    if (!isActive || !sessionStartTimeRef.current) {
       return savedDurationRef.current;
     }
     
     const currentTime = Date.now();
-    const sessionElapsedMs = currentTime - sessionStartTimeRef.current;
+    const sessionElapsedMs = currentTime - sessionStartTimeRef.current.getTime();
     const sessionElapsedSeconds = Math.floor(sessionElapsedMs / 1000);
     
     return savedDurationRef.current + sessionElapsedSeconds;
@@ -79,6 +85,32 @@ const OnSessionPage: React.FC = () => {
 
       try {
         setLoading(true);
+        
+        // 먼저 백그라운드에서 세션 상태 가져오기 시도
+        const getBackgroundSessionState = (): Promise<{isActive: boolean, duration: number} | null> => {
+          return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ 
+              type: 'GET_SESSION_STATUS',
+              sessionId: state.sessionId
+            }, (response) => {
+              console.log('Background session status response:', response);
+              if (response && response.sessionId === state.sessionId) {
+                resolve({
+                  isActive: response.isActive,
+                  duration: response.duration
+                });
+              } else {
+                resolve(null);
+              }
+            });
+            
+            // 타임아웃 설정 (응답이 없는 경우 대비)
+            setTimeout(() => resolve(null), 1000);
+          });
+        };
+        
+        const backgroundState = await getBackgroundSessionState();
+        
         // 홀 정보 가져오기
         const holeData = await getHole(state.holeId);
         if (!holeData) {
@@ -95,28 +127,71 @@ const OnSessionPage: React.FC = () => {
         
         setSession(sessionData);
         
-        // 기존 시간 설정
-        console.log("Session loaded, totalDuration from Firebase:", sessionData.totalDuration);
+        // 기존 시간 설정 - 백그라운드 상태와 Firestore 중 더 큰 값 사용
+        let initialDuration = 0;
+        
+        if (backgroundState && typeof backgroundState.duration === 'number') {
+          console.log(`Using duration from background: ${backgroundState.duration} seconds`);
+          initialDuration = backgroundState.duration;
+        } 
+        
         if (typeof sessionData.totalDuration === 'number') {
-          console.log(`Setting initial duration to ${sessionData.totalDuration} seconds`);
-          const storedDuration = sessionData.totalDuration;
-          savedDurationRef.current = storedDuration;
-          setDisplayDuration(storedDuration);
-        } else {
-          // totalDuration이 없는 경우 0으로 초기화
-          console.log("No totalDuration found, initializing to 0");
-          savedDurationRef.current = 0;
-          setDisplayDuration(0);
-          // Firebase에 초기 시간 데이터 저장
-          await updateSessionDuration(state.sessionId, 0);
+          console.log(`Using duration from Firestore: ${sessionData.totalDuration} seconds`);
+          initialDuration = Math.max(initialDuration, sessionData.totalDuration);
         }
         
-        // 세션을 활성 상태로 설정
-        await updateSessionActiveStatus(state.sessionId, true);
-        setIsActive(true);
+        console.log(`Setting initial duration to ${initialDuration} seconds`);
+        savedDurationRef.current = initialDuration;
+        setDisplayDuration(initialDuration);
         
-        // 현재 세션 시작 시간 설정
-        sessionStartTimeRef.current = Date.now();
+        // 세션이 백그라운드에서 이미 활성화 상태인지 확인
+        const isAlreadyActive = backgroundState ? backgroundState.isActive : false;
+        
+        if (!isAlreadyActive) {
+          // 세션을 활성 상태로 설정
+          await updateSessionActiveStatus(state.sessionId, true);
+          setIsActive(true);
+          
+          // 현재 세션 시작 시간 설정
+          sessionStartTimeRef.current = new Date();
+          
+          // 백그라운드 스크립트에 세션 시작 알림
+          chrome.runtime.sendMessage({ 
+            action: 'START_SESSION',
+            data: {
+              sessionId: state.sessionId,
+              holeId: state.holeId,
+              sessionName: state.sessionName,
+              savedDuration: initialDuration
+            }
+          }, (response) => {
+            if (response && response.success) {
+              console.log('[DIGGIN] OnSessionPage: Session started in background script');
+              // 첫 시작 플래그 업데이트
+              setIsFirstStart(false);
+            } else {
+              console.error('[DIGGIN] OnSessionPage: Failed to start session in background:', response?.error);
+            }
+          });
+        } else {
+          // 이미 활성화된 세션이면 상태만 동기화
+          setIsActive(true);
+          sessionStartTimeRef.current = new Date();
+          console.log('Session is already active in background, syncing state');
+          
+          // 백그라운드에 세션 계속 요청
+          chrome.runtime.sendMessage({ 
+            action: 'SESSION_CONTINUE',
+            data: {
+              sessionId: state.sessionId,
+              holeId: state.holeId,
+              sessionName: state.sessionName,
+              savedDuration: initialDuration
+            }
+          }, (response) => {
+            console.log('[DIGGIN] OnSessionPage: Session continue response:', response);
+          });
+        }
         
         // 인사이트 로드
         const insightData = await getSessionEntries(state.sessionId);
@@ -192,91 +267,242 @@ const OnSessionPage: React.FC = () => {
   };
 
   const finishSession = async () => {
-    console.log("finish session");
-    if (!hole || !session) return;
-
     try {
-      // 현재 시간 저장
-      await saveCurrentTime();
+      // 세션이 의도적으로 종료되었음을 표시
+      sessionIntentionallyEndedRef.current = true;
+      console.log('[DIGGIN] OnSessionPage: Session intentionally ended by user (Stop button)');
       
-      // 세션 상태를 completed로 업데이트
-      await updateSessionActiveStatus(session.id, false);
+      setLoading(true);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       
-      // FinishSessionPage로 이동
+      // 세션 비활성화
+      setIsActive(false);
+
+      // 브라우저 로컬 스토리지에서 활성 세션 정보 삭제 및 세션 종료 표시 (App.tsx에서 체크하는 부분)
+      localStorage.removeItem('activeSession');
+      localStorage.setItem('sessionEnded', 'true'); // 세션이 의도적으로 종료되었음을 표시
+
+      // 1분 후에 sessionEnded 플래그 자동 제거 (다음 세션 시작을 방해하지 않도록)
+      setTimeout(() => {
+        localStorage.removeItem('sessionEnded');
+        console.log('[DIGGIN] OnSessionPage: Cleared sessionEnded flag after timeout');
+      }, 60000); // 60초 타임아웃
+
+      const sessionRef = doc(db, 'sessions', state.sessionId);
+      
+      // 최종 세션 시간 계산
+      let finalDuration = savedDurationRef.current;
+      if (sessionStartTimeRef.current) {
+        const now = new Date();
+        finalDuration += Math.floor((now.getTime() - sessionStartTimeRef.current.getTime()) / 1000);
+      }
+      
+      // Firestore에 최종 세션 정보 업데이트
+      await updateDoc(sessionRef, {
+        totalDuration: finalDuration,
+        isActive: false,
+        endedAt: Timestamp.now()
+      });
+      
+      // 백그라운드 서비스에 세션 종료 알림
+      chrome.runtime.sendMessage({
+        action: 'END_SESSION',
+        data: { sessionId: state.sessionId }
+      }, (response) => {
+        console.log('[DIGGIN] OnSessionPage: END_SESSION response:', response);
+        if (response?.success) {
+          console.log('[DIGGIN] OnSessionPage: Session ended with final duration:', response.finalDuration);
+        } else {
+          console.error('[DIGGIN] OnSessionPage: Error ending session:', response?.error);
+        }
+      });
+      
+      // 다이얼로그 표시
       navigate('/finish-session', {
         state: {
-          holeId: hole.id,
-          sessionId: session.id,
-          sessionName: session.name,
-          duration: savedDurationRef.current,
+          holeId: state.holeId,
+          sessionId: state.sessionId,
+          sessionName: state.sessionName,
+          duration: finalDuration,
           insightCount: insightCount
         }
       });
-    } catch (err) {
-      console.error('세션 종료 실패:', err);
-      alert('세션을 종료하는데 실패했습니다.');
+    } catch (error) {
+      console.error('[DIGGIN] OnSessionPage: Error finishing session:', error);
+      setError('Failed to finish the session');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 타이머 정지 
-  const stopTimer = useCallback(async () => {
-    console.log(`Stopping timer. Current timer ID: ${timerRef.current}`);
+  // 세션 상태 관리
+  const toggleSession = useCallback(async () => {
+    if (!session) return;
 
-    if (timerRef.current === null) {
-      console.log("Timer not running, nothing to stop");
-      return;
-    }
-    
-    window.clearInterval(timerRef.current);
-    timerRef.current = null;
-    
-    // 현재 표시 시간을 기준으로 저장
-    const currentDuration = displayDuration;
-    console.log(`Current total duration: ${currentDuration} seconds`);
-    
-    // 누적 시간 업데이트
-    savedDurationRef.current = currentDuration;
-    
-    // Firebase에 시간 업데이트
-    if (session) {
-      try {
-        // console.log(`Saving final duration to Firebase: ${currentDuration} seconds`);
-        await updateSessionDuration(session.id, currentDuration);
-        await updateSessionActiveStatus(session.id, false);
-        console.log("Duration saved and session marked as inactive");
-      } catch (error) {
-        console.error('세션 시간 업데이트 실패:', error);
-      }
-    }
-  }, [session, displayDuration]);
-
-  // 세션 활성/비활성 토글
-  const toggleSession = async () => {
     try {
       if (isActive) {
-        console.log(`Pausing session. Current duration: ${displayDuration} seconds`);
-        await stopTimer();
+        // 세션 일시 정지
+        setIsActive(false);
         
-        // 세션 비활성화 상태로 변경
-        if (session) {
-          console.log(`Saving current duration to Firebase: ${displayDuration} seconds`);
-          await updateSessionDuration(session.id, displayDuration);
-          await updateSessionActiveStatus(session.id, false);
+        // 타이머 정지
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
         }
+        
+        // 현재 시간 계산
+        const currentTime = new Date();
+        const startTime = new Date(sessionStartTimeRef.current);
+        const elapsedTime = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+        const totalDuration = savedDurationRef.current + elapsedTime;
+        savedDurationRef.current = totalDuration;
+        
+        // Firestore에 세션 상태 업데이트
+        console.log('[DIGGIN] OnSessionPage: Updating Firestore - Setting session inactive, duration:', totalDuration);
+        await updateSessionActiveStatus(session.id, false);
+        await updateSessionDuration(session.id, totalDuration);
+        console.log('[DIGGIN] OnSessionPage: Firestore update completed - Session paused');
+        
+        // 백그라운드 스크립트에 세션 일시 정지 알림
+        console.log('[DIGGIN] OnSessionPage: Sending PAUSE_SESSION to Realtime Database');
+        chrome.runtime.sendMessage({ 
+          action: 'PAUSE_SESSION',
+          data: {
+            sessionId: session.id,
+            holeId: hole?.id || '',
+            sessionName: session.name
+          }
+        }, (response) => {
+          console.log('[DIGGIN] OnSessionPage: Realtime Database pause response:', response);
+          if (response && response.savedDuration !== undefined) {
+            savedDurationRef.current = response.savedDuration;
+            console.log('[DIGGIN] OnSessionPage: Updated savedDuration from Realtime DB:', response.savedDuration);
+          }
+        });
+        
+        // 추가: 현재 상태 확인을 위한 명시적 쿼리
+        chrome.runtime.sendMessage({
+          action: 'GET_SESSION_STATE'
+        }, (response) => {
+          console.log('[DIGGIN] OnSessionPage: Realtime DB state after pause:', response ? {
+            isActive: response.isActive,
+            elapsedTimeInSeconds: response.data?.elapsedTimeInSeconds
+          } : 'No response');
+        });
       } else {
-        console.log(`Resuming session. Saved duration: ${savedDurationRef.current} seconds`);
-        if (session) {
-          await updateSessionActiveStatus(session.id, true);
+        // 세션 시작/재개
+        setIsActive(true);
+        
+        // 시작 시간 설정
+        sessionStartTimeRef.current = new Date();
+        
+        // 타이머 시작
+        if (!timerRef.current) {
+          timerRef.current = setInterval(() => {
+            const now = new Date();
+            const startTime = new Date(sessionStartTimeRef.current);
+            const elapsedTime = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+            const totalDuration = savedDurationRef.current + elapsedTime;
+            setDisplayDuration(totalDuration);
+          }, 1000);
         }
         
-        // 타이머 재시작
-        startTimer();
+        // Firestore에 세션 상태 업데이트
+        console.log('[DIGGIN] OnSessionPage: Updating Firestore - Setting session active');
+        await updateSessionActiveStatus(session.id, true);
+        console.log('[DIGGIN] OnSessionPage: Firestore update completed - Session resumed');
+        
+        // 백그라운드 스크립트에 세션 시작/재개 알림
+        console.log('[DIGGIN] OnSessionPage: Sending RESUME_SESSION to Realtime Database');
+        chrome.runtime.sendMessage({ 
+          action: 'RESUME_SESSION',
+          data: {
+            sessionId: session.id,
+            holeId: hole?.id || '',
+            sessionName: session.name,
+            savedDuration: savedDurationRef.current
+          }
+        }, (response) => {
+          console.log('[DIGGIN] OnSessionPage: Realtime Database resume response:', response);
+        });
+        
+        // 추가: 현재 상태 확인을 위한 명시적 쿼리
+        chrome.runtime.sendMessage({
+          action: 'GET_SESSION_STATE'
+        }, (response) => {
+          console.log('[DIGGIN] OnSessionPage: Realtime DB state after resume:', response ? {
+            isActive: response.isActive,
+            elapsedTimeInSeconds: response.data?.elapsedTimeInSeconds
+          } : 'No response');
+        });
       }
-      setIsActive(!isActive);
-    } catch (error) {
-      console.error("Error toggling session:", error);
+    } catch (err) {
+      console.error('세션 상태 변경 실패:', err);
+      alert('세션 상태를 변경하는데 실패했습니다.');
     }
-  };
+  }, [isActive, session, saveCurrentTime]);
+
+  // 세션 정지
+  const stopTimer = useCallback(async () => {
+    if (!session) return;
+
+    try {
+      setIsActive(false);
+      
+      // 타이머 정지
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // 현재 시간 계산
+      const currentTime = new Date();
+      let totalDuration = savedDurationRef.current;
+      
+      if (isActive && sessionStartTimeRef.current) {
+        const startTime = new Date(sessionStartTimeRef.current);
+        const elapsedTime = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+        totalDuration += elapsedTime;
+      }
+      
+      // Firestore에 세션 상태 업데이트
+      await updateSessionActiveStatus(session.id, false);
+      await updateSessionDuration(session.id, totalDuration);
+      
+      // 백그라운드 스크립트에 세션 중지 알림
+      chrome.runtime.sendMessage({ 
+        action: 'END_SESSION',
+        data: {
+          sessionId: session.id,
+          holeId: hole?.id || ''
+        }
+      }, (response) => {
+        console.log('[DIGGIN] OnSessionPage: Session stopped response:', response);
+        if (response && response.finalDuration !== undefined) {
+          const finalDuration = response.finalDuration;
+          console.log('[DIGGIN] OnSessionPage: Final session duration:', finalDuration);
+        }
+      });
+      
+      // 페이지 닫히더라도 백그라운드 스크립트의 정상 작동 확인을 위해
+      // 클립보드 연결 요청 및 로깅
+      try {
+        const port = chrome.runtime.connect({ name: "clipboard" });
+        port.postMessage({ 
+          action: 'CONNECTION_TEST',
+          timestamp: Date.now()
+        });
+        console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
+      } catch (err) {
+        console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+      }
+    } catch (err) {
+      console.error('Failed to stop timer:', err);
+    }
+  }, [isActive, session, navigate]);
 
   // 세션 시작 시 타이머 시작
   useEffect(() => {
@@ -300,28 +526,6 @@ const OnSessionPage: React.FC = () => {
       }
     };
   }, [session, loading, isActive, startTimer]);
-
-  // 페이지 언마운트 시 시간 저장
-  useEffect(() => {
-    return () => {
-      console.log("Component unmounting, saving final duration");
-      if (session && isActive) {
-        const finalDuration = displayDuration;
-        // console.log(`Final duration on unmount: ${finalDuration} seconds`);
-        
-        // 비동기 함수를 직접 호출하는 대신 즉시 실행 함수 사용
-        (async () => {
-          try {
-            // console.log(`Saving duration on unmount: ${finalDuration} seconds`);
-            await updateSessionDuration(session.id, finalDuration);
-            // console.log("Duration saved on unmount");
-          } catch (err) {
-            console.error("Failed to save duration on unmount:", err);
-          }
-        })();
-      }
-    };
-  }, [session, isActive, displayDuration]);
 
   // 페이지 가시성 변경 감지 (탭 전환 등)
   useEffect(() => {
@@ -375,23 +579,39 @@ const OnSessionPage: React.FC = () => {
       }
       console.log('Copied text:', copiedText);
 
-      // 현재 URL 가져오기
+      // 현재 URL 및 도메인 가져오기
       const currentUrl = window.location.href;
-      console.log('Current URL:', currentUrl);
+      let sourceDomain;
+      try {
+        sourceDomain = new URL(currentUrl).hostname;
+      } catch (error) {
+        console.error('Failed to extract domain:', error);
+        sourceDomain = 'unknown';
+      }
+      
+      console.log('Current URL:', currentUrl, 'Domain:', sourceDomain);
 
-      // 텍스트 엔트리 생성
-      console.log('Creating text entry with data:', {
+      // Firebase에 직접 저장
+      console.log('Creating text entry in Firebase with data:', {
         sessionId: session.id,
-        text: copiedText,
-        sourceUrl: currentUrl
+        content: copiedText,
+        sourceUrl: currentUrl,
+        sourceDomain
       });
       
-      await createTextEntry(
-        session.id,
-        copiedText,
-        currentUrl
-      );
-      console.log('Text entry successfully saved to database');
+      // Firestore 컬렉션 참조
+      const entriesCollection = collection(db, 'textEntries');
+      const docRef = await addDoc(entriesCollection, {
+        sessionId: session.id,
+        holeId: hole.id,
+        content: copiedText,
+        sourceUrl: currentUrl,
+        sourceDomain,
+        capturedAt: serverTimestamp(),
+        isBookmarked: false
+      });
+      
+      console.log('Text entry successfully saved to Firebase with ID:', docRef.id);
 
       // 인사이트 목록 새로고침
       console.log('Refreshing insights list...');
@@ -417,6 +637,161 @@ const OnSessionPage: React.FC = () => {
       document.removeEventListener('copy', handleCopy);
     };
   }, [isActive, handleCopy]);
+
+  // 컴포넌트 로드 시 세션 시작
+  useEffect(() => {
+    console.log('[DIGGIN] OnSessionPage: Component mounted');
+    
+    async function initSession() {
+      let sessionId = state?.sessionId;
+      let holeId = state?.holeId;
+      let sessionName = state?.sessionName;
+      
+      // state가 없는 경우 (직접 /session 접근 또는 활성 세션 자동 로드)
+      if (!sessionId || !holeId) {
+        console.log('[DIGGIN] OnSessionPage: Missing state, checking for active session');
+        
+        try {
+          // 활성 세션 확인
+          const activeSession = await new Promise<{
+            sessionId?: string;
+            holeId?: string;
+            sessionName?: string;
+          } | null>((resolve) => {
+            chrome.runtime.sendMessage(
+              { action: 'CHECK_ACTIVE_SESSION' },
+              (response) => {
+                if (response?.success && response?.hasActiveSession && response?.activeSession) {
+                  console.log('[DIGGIN] OnSessionPage: Found active session', response.activeSession);
+                  resolve(response.activeSession);
+                } else {
+                  console.log('[DIGGIN] OnSessionPage: No active session found');
+                  resolve(null);
+                }
+              }
+            );
+            
+            // 타임아웃 설정
+            setTimeout(() => resolve(null), 2000);
+          });
+          
+          if (activeSession && activeSession.sessionId && activeSession.holeId) {
+            sessionId = activeSession.sessionId;
+            holeId = activeSession.holeId;
+            sessionName = activeSession.sessionName || '';
+            console.log('[DIGGIN] OnSessionPage: Using active session data:', { sessionId, holeId, sessionName });
+          } else {
+            console.error('[DIGGIN] OnSessionPage: No session ID found from state or active session');
+            navigate('/');
+            return;
+          }
+        } catch (error) {
+          console.error('[DIGGIN] OnSessionPage: Error getting active session:', error);
+          navigate('/');
+          return;
+        }
+      }
+      
+      // Realtime Database 세션 상태 확인
+      chrome.runtime.sendMessage({
+        action: 'GET_SESSION_STATE'
+      }, (response) => {
+        console.log('[DIGGIN] OnSessionPage: Current Realtime DB session state:', response ? {
+          isActive: response.isActive,
+          authenticated: response.authenticated,
+          sessionData: response.data
+        } : 'No response');
+      });
+      
+      // 백그라운드 스크립트에 세션 시작 알림
+      chrome.runtime.sendMessage({
+        action: 'START_SESSION',
+        data: {
+          sessionId,
+          holeId,
+          sessionName
+        }
+      }, (response) => {
+        if (response?.success) {
+          console.log('[DIGGIN] OnSessionPage: Session started in Realtime Database successfully');
+        } else {
+          console.error('[DIGGIN] OnSessionPage: Failed to start session in Realtime Database:', response?.error);
+        }
+      });
+    }
+    
+    initSession();
+    
+    // 컴포넌트 언마운트 시 세션 종료 대신 계속 유지 메시지 전송
+    return () => {
+      console.log('[DIGGIN] OnSessionPage: Component unmounting');
+      
+      // 세션이 의도적으로 종료된 경우 (Stop 버튼 클릭) SESSION_CONTINUE 메시지를 보내지 않음
+      if (sessionIntentionallyEndedRef.current) {
+        console.log('[DIGGIN] OnSessionPage: Session was intentionally ended, not sending SESSION_CONTINUE');
+        return;
+      }
+      
+      console.log('[DIGGIN] OnSessionPage: Session was not ended, sending SESSION_CONTINUE');
+      
+      if (!session) {
+        console.log('[DIGGIN] OnSessionPage: No session data available on unmount');
+        if (state?.sessionId) {
+          // state만 있는 경우 (세션 데이터 로드 전에 언마운트 된 경우)
+          chrome.runtime.sendMessage({
+            action: 'SESSION_CONTINUE',
+            data: {
+              sessionId: state.sessionId,
+              holeId: state.holeId,
+              sessionName: state.sessionName
+            }
+          }, (response) => {
+            console.log('[DIGGIN] OnSessionPage: Session continuation (using state) response:', response);
+          });
+        }
+        return;
+      }
+      
+      const finalDuration = calculateCurrentDuration();
+      console.log('[DIGGIN] OnSessionPage: Final duration on unmount:', finalDuration, 'seconds');
+      
+      // Firestore에 마지막 시간 저장 (선택적)
+      if (session.id) {
+        updateSessionDuration(session.id, finalDuration)
+          .then(() => {
+            console.log('[DIGGIN] OnSessionPage: Duration saved to Firestore on unmount');
+          })
+          .catch(error => {
+            console.error('[DIGGIN] OnSessionPage: Error saving duration to Firestore on unmount:', error);
+          });
+      }
+      
+      // 백그라운드 스크립트에 세션 계속 유지 신호 전송
+      chrome.runtime.sendMessage({
+        action: 'SESSION_CONTINUE',
+        data: {
+          sessionId: session.id,
+          holeId: hole?.id || state?.holeId,
+          sessionName: session.name || state?.sessionName,
+          savedDuration: finalDuration
+        }
+      }, (response) => {
+        console.log('[DIGGIN] OnSessionPage: Session continuation message response:', response);
+      });
+      
+      // 클립보드 연결 요청 및 로깅
+      try {
+        const port = chrome.runtime.connect({ name: "clipboard" });
+        port.postMessage({ 
+          action: 'CONNECTION_TEST',
+          timestamp: Date.now()
+        });
+        console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
+      } catch (err) {
+        console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+      }
+    };
+  }, [calculateCurrentDuration, navigate, state, session, hole]);
 
   if (loading) {
     return (

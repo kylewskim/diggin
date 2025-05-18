@@ -9,7 +9,6 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@shared/firebase';
 
 // Firebase web client ID
-// const WEB_CLIENT_ID = "492982442570-28e3lccep11l5a37ib4e8g2t2pnjcf2l.apps.googleusercontent.com";
 const WEB_CLIENT_ID = "492982442570-28e3lccep11l5a37ib4e8g2t2pnjcf2l.apps.googleusercontent.com";
 
 // Type check functions
@@ -34,32 +33,32 @@ const isChromeRuntimeAvailable = (): boolean => {
  */
 export const signInWithGoogle = async () => {
   try {
-    console.log("Starting Google sign-in with launchWebAuthFlow");
+    console.log("Starting Google sign-in with web auth flow");
     
     if (!isChromeIdentityAvailable() || !isChromeRuntimeAvailable()) {
       throw new Error("Chrome identity 또는 runtime API를 사용할 수 없습니다.");
     }
     
-    // 구글 로그인 URL 구성
+    // Google OAuth URL 생성
     const authURL = new URL("https://accounts.google.com/o/oauth2/auth");
     authURL.searchParams.append("client_id", WEB_CLIENT_ID);
     authURL.searchParams.append("response_type", "token id_token");
-    authURL.searchParams.append("redirect_uri", `https://${window.chrome?.runtime?.id}.chromiumapp.org/`);
+    authURL.searchParams.append("redirect_uri", `https://${chrome.runtime.id}.chromiumapp.org/`);
     authURL.searchParams.append("scope", "email profile openid");
-    authURL.searchParams.append("prompt", "select_account");
     
-    // launchWebAuthFlow로 로그인 페이지 표시
+    // Chrome launchWebAuthFlow 사용
     const responseUrl = await new Promise<string>((resolve, reject) => {
-      window.chrome?.identity?.launchWebAuthFlow(
+      chrome.identity.launchWebAuthFlow(
         { url: authURL.toString(), interactive: true },
         (responseUrl) => {
-          if (window.chrome?.runtime?.lastError) {
-            reject(new Error(window.chrome.runtime.lastError.message || "인증 오류가 발생했습니다."));
+          if (chrome.runtime.lastError) {
+            console.error('Identity API error:', chrome.runtime.lastError);
+            reject(chrome.runtime.lastError);
             return;
           }
           
           if (!responseUrl) {
-            reject(new Error("인증 응답을 받지 못했습니다."));
+            reject(new Error('인증 응답을 받지 못했습니다.'));
             return;
           }
           
@@ -67,8 +66,6 @@ export const signInWithGoogle = async () => {
         }
       );
     });
-    
-    console.log("Received auth response");
     
     // URL에서 id_token 추출
     const url = new URL(responseUrl);
@@ -79,7 +76,7 @@ export const signInWithGoogle = async () => {
       throw new Error("ID 토큰을 찾을 수 없습니다.");
     }
     
-    console.log("ID token obtained");
+    console.log("Got id_token from Google Auth");
     
     // ID 토큰으로 Firebase 인증
     const credential = GoogleAuthProvider.credential(idToken);
@@ -110,6 +107,12 @@ export const signInWithGoogle = async () => {
  */
 export const signOut = async () => {
   try {
+    // 백그라운드 스크립트에 로그아웃 알림
+    if (isChromeRuntimeAvailable()) {
+      await window.chrome?.storage?.local.remove(['userToken', 'userInfo']);
+    }
+    
+    // Firebase 로그아웃
     await firebaseSignOut(auth);
   } catch (error) {
     console.error("Error signing out:", error);
@@ -141,28 +144,9 @@ export const getCurrentUserData = async (user: User) => {
  * 인증 상태 변경 감지
  */
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
-  // First check if we have a saved auth state in Chrome storage
-  (async () => {
-    try {
-      console.log("Checking for saved auth state in Chrome storage");
-      const savedUser = await getAuthStateFromStorage();
-      
-      if (savedUser && !auth.currentUser) {
-        console.log("Found saved user in Chrome storage, will attempt to restore session");
-        // We shouldn't call callback directly with the saved user
-        // as it's not a full Firebase User object with all methods
-        await restoreUserSession(savedUser);
-      }
-    } catch (error) {
-      console.error("Error checking saved auth state:", error);
-    }
-  })();
-
-  // Then set up the normal auth state change listener
+  // Firebase 인증 상태 변경 리스너 설정
   return onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed:", user ? "User logged in" : "No user");
-    // Save the auth state to Chrome storage
-    await saveAuthStateToStorage(user);
     callback(user);
   });
 };

@@ -1,60 +1,63 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+// @ts-ignore - Node.js 타입 문제 해결
+import { fileURLToPath } from 'url';
+// @ts-ignore - Node.js 타입 문제 해결
 import { copyFileSync, existsSync, mkdirSync } from 'fs';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // manifest.json과 아이콘 파일들을 복사하는 플러그인
 const copyExtensionFiles = () => {
   return {
     name: 'copy-extension-files',
-    closeBundle: () => {
-      console.log('Copying extension files to dist folder...');
-      
-      // manifest.json을 dist 폴더로 복사
-      copyFileSync(
-        resolve(__dirname, 'manifest.json'),
-        resolve(__dirname, 'dist/manifest.json')
-      );
-      
-      // 아이콘 파일 복사
-      try {
-        // public 폴더의 아이콘 파일을 dist 폴더로 복사
-        copyFileSync(
-          resolve(__dirname, 'public/icon16.png'),
-          resolve(__dirname, 'dist/icon-16.png')
-        );
-        
-        copyFileSync(
-          resolve(__dirname, 'public/icon48.png'),
-          resolve(__dirname, 'dist/icon-48.png')
-        );
-        
-        copyFileSync(
-          resolve(__dirname, 'public/icon128.png'),
-          resolve(__dirname, 'dist/icon-128.png')
-        );
-      } catch (error) {
-        console.error('Error copying icon files:', error);
+    writeBundle() {
+      // dist 폴더가 없으면 생성
+      if (!existsSync('dist')) {
+        mkdirSync('dist');
       }
-      
-      console.log('Extension files successfully copied to dist folder');
-    }
+
+      // manifest 파일 복사
+      copyFileSync('manifest.json', 'dist/manifest.json');
+
+      // public 폴더의 아이콘 파일들 복사
+      if (existsSync('public')) {
+        if (!existsSync('dist/public')) {
+          mkdirSync('dist/public', { recursive: true });
+        }
+        // 파일 이름 수정 (하이픈이 있는 정확한 이름으로 변경)
+        copyFileSync('public/icon-16.png', 'dist/public/icon-16.png');
+        copyFileSync('public/icon-48.png', 'dist/public/icon-48.png');
+        copyFileSync('public/icon-128.png', 'dist/public/icon-128.png');
+      }
+    },
   };
 };
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), copyExtensionFiles()],
   build: {
     outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
+        index: resolve(__dirname, 'index.html'),
         background: resolve(__dirname, 'src/background.ts'),
+        content: resolve(__dirname, 'src/content.ts')
       },
       output: {
-        entryFileNames: '[name].js',
-      },
+        entryFileNames: (chunkInfo) => {
+          return chunkInfo.name === 'index' ? 'assets/[name]-[hash].js' : '[name].js';
+        },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        manualChunks: undefined
+      }
     },
+    target: 'es2015',
+    minify: false
   },
   resolve: {
     alias: {

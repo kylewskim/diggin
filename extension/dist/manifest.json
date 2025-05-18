@@ -1,36 +1,59 @@
 {
   "manifest_version": 3,
-  "name": "Diggin",
+  "name": "DIGGIN Extension",
   "version": "1.0.0",
-  "description": "A Chrome extension for Diggin",
+  "description": "Collect and organize insights from the web",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx/Ey1lNuHpVH6e5kddxEPjNVbGK93A7w0UcfQz35QpOUbVjOHGRCX51eULXAq+GY/pvOeWxNBTMjPRhnvGnClfQazvtSbKleJnBm47pcbhKu3N23lguml63eYt8maFISSpUCssL3bjYf8Egjqh4KyHEwf/YdAf4Qi/4qPmwssJbpKFw53mu6fy1g+CjP3GGQeejGyNU8gfIFI1EOf5E4/Qo0SU9iVTl27qHWbvf8MBtRhoLrn3PTeGia7dC1n4/iSk/dUON2mr13nqs390fQaxEp4CPMQ+RSSUFpI5NfsQHgwLnWgV/VMssWtx0gWIoZH6rjUBowOv1PntbqiAX6QwIDAQAB",
   "action": {
     "default_popup": "index.html",
     "default_icon": {
-      "16": "icon-16.png",
-      "48": "icon-48.png",
-      "128": "icon-128.png"
+      "16": "public/icon-16.png",
+      "48": "public/icon-48.png",
+      "128": "public/icon-128.png"
     }
   },
   "permissions": [
     "storage",
-    "identity",
+    "clipboardRead",
     "tabs",
-    "clipboardRead"
+    "identity",
+    "contextMenus",
+    "scripting",
+    "activeTab"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "icons": {
-    "16": "icon-16.png",
-    "48": "icon-48.png",
-    "128": "icon-128.png"
+    "16": "public/icon-16.png",
+    "48": "public/icon-48.png",
+    "128": "public/icon-128.png"
   },
   "oauth2": {
-    "client_id": "175967632049-v617c2uu6d3me1o4ititk2bb6uuvm624.apps.googleusercontent.com",
+    "client_id": "492982442570-28e3lccep11l5a37ib4e8g2t2pnjcf2l.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"
     ]
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["index.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebase.app https://*.diggin-a08f8.firebaseapp.com wss://*.firebaseio.com;"
   }
 } 

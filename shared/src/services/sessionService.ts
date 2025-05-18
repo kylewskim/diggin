@@ -113,7 +113,13 @@ export const getActiveSession = async (holeId: string): Promise<Session | null> 
  */
 export const updateSession = async (
   sessionId: string, 
-  updates: { name?: string; isActive?: boolean }
+  updates: { 
+    name?: string; 
+    isActive?: boolean; 
+    endTime?: Date; 
+    status?: string;
+    totalDuration?: number;
+  }
 ): Promise<void> => {
   try {
     const docRef = doc(db, 'sessions', sessionId);
@@ -181,6 +187,7 @@ export const updateSessionActiveStatus = async (sessionId: string, isActive: boo
     throw error;
   }
 }; 
+ 
  
  
  
