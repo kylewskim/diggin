@@ -36,6 +36,15 @@ export interface TextEntry {
   capturedAt: Timestamp;
   isBookmarked: boolean;
   tags?: string[];
+}
+
+export interface Highlight {
+  id: string;
+  userId: string;
+  holeId: string;
+  textEntryIds: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 } 
  
  

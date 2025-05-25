@@ -8,7 +8,10 @@ export * from './holeService';
 export * from './sessionService';
 
 // Text Entry service
-export * from './textEntryService'; 
+export * from './textEntryService';
+
+// Highlight service
+export * from './highlightService'; 
  
  
  

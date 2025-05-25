@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getHole } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
 import { getSessionEntries } from '@shared/services/textEntryService';
+import { getHighlights, addToHighlights, removeFromHighlights, clearHighlights } from '@shared/services/highlightService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
-import { colors } from '@shared/constants/colors';
-import Header from '../components/Header';
+import { Button } from '../components/Button';
+import { SingleLineTextField } from '@shared/components/ui/textField/singleLine';
+import * as Icons from '@shared/icons';
 
 export default function InsightsPage() {
   const { holeId } = useParams<{ holeId: string }>();
-  const { user } = useAuth();
+  const { user, logOut } = useAuth();
   const navigate = useNavigate();
   
   const [hole, setHole] = useState<Hole | null>(null);
@@ -21,6 +23,8 @@ export default function InsightsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [hidePageInfo, setHidePageInfo] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showHighlights, setShowHighlights] = useState(true);
   
   // Load hole data
   useEffect(() => {
@@ -45,6 +49,10 @@ export default function InsightsPage() {
         
         // Load entries for all sessions by default
         await loadEntriesForSessions(holeSessions.map(s => s.id));
+        
+        // Load saved highlights
+        const savedHighlights = await getHighlights(user.uid, holeId);
+        setSelectedEntries(savedHighlights);
       } catch (err) {
         console.error('Failed to load hole data:', err);
         setError('Failed to load data. Please try again.');
@@ -67,8 +75,6 @@ export default function InsightsPage() {
       setLoading(true);
       setError(null);
       
-      // For simplicity, load entries for all sessions without pagination
-      // In a real app, you'd implement pagination and optimize this
       let allEntries: TextEntry[] = [];
       
       for (const sessionId of sessionIds) {
@@ -103,60 +109,111 @@ export default function InsightsPage() {
     }
   };
   
-  // Toggle entry selection for highlights
-  const toggleEntrySelection = (entryId: string) => {
-    if (selectedEntries.includes(entryId)) {
-      setSelectedEntries(selectedEntries.filter(id => id !== entryId));
-    } else {
-      setSelectedEntries([...selectedEntries, entryId]);
+  // Toggle entry selection for highlights with database persistence
+  const toggleEntrySelection = async (entryId: string) => {
+    if (!user || !holeId) return;
+    
+    try {
+      if (selectedEntries.includes(entryId)) {
+        // Remove from highlights
+        await removeFromHighlights(user.uid, holeId, entryId);
+        setSelectedEntries(selectedEntries.filter(id => id !== entryId));
+      } else {
+        // Add to highlights
+        await addToHighlights(user.uid, holeId, entryId);
+        setSelectedEntries([...selectedEntries, entryId]);
+      }
+    } catch (error) {
+      console.error('Failed to update highlights:', error);
+      // Show error to user (you could add a toast notification here)
+    }
+  };
+  
+  // Clear all highlights with database persistence
+  const handleClearHighlights = async () => {
+    if (!user || !holeId) return;
+    
+    try {
+      await clearHighlights(user.uid, holeId);
+      setSelectedEntries([]);
+    } catch (error) {
+      console.error('Failed to clear highlights:', error);
+      // Show error to user (you could add a toast notification here)
     }
   };
   
   // Format date helper
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '';
-    const date = timestamp.toDate?.() || new Date(timestamp);
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date);
+    }).format(date).replace(/\//g, '.');
   };
-  
-  // Group entries by source URL
-  const entriesBySource = entries.reduce((acc, entry) => {
-    const key = `${entry.sourceUrl}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(entry);
-    return acc;
-  }, {} as Record<string, TextEntry[]>);
+
+  // Format session date for display
+  const formatSessionDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date).replace(/\//g, '.');
+  };
+
+  // Calculate total session time
+  const getTotalSessionTime = () => {
+    const totalSeconds = sessions.reduce((total, session) => {
+      return total + (session.totalDuration || 0);
+    }, 0);
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
   
   // Extract domain from URL
   const getDomain = (url: string) => {
     try {
       const domain = new URL(url).hostname;
-      return domain;
+      return domain.replace('www.', '');
     } catch {
       return url;
     }
   };
 
+  // Group entries by source URL for display
+  const groupEntriesBySource = () => {
+    const filtered = entries.filter(entry => 
+      entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (entry.sourceUrl && getDomain(entry.sourceUrl).toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const groups: { [key: string]: TextEntry[] } = {};
+    filtered.forEach(entry => {
+      const key = entry.sourceUrl || 'Unknown Source';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(entry);
+    });
+    return groups;
+  };
+
   if (loading && !hole) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="Loading..." />
-        <div className="flex justify-center items-center h-screen">
-          <div className="flex flex-col items-center">
-            <svg className="animate-spin h-10 w-10 text-gray-950 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-gray-600 text-lg">Loading insights...</p>
-          </div>
+      <div className="w-full min-h-screen flex flex-col">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-gray-700">Loading...</div>
         </div>
       </div>
     );
@@ -164,192 +221,322 @@ export default function InsightsPage() {
   
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="Error" />
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="bg-white shadow rounded-lg p-8 text-center">
-            <svg className="mx-auto h-16 w-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <h3 className="mt-5 text-lg font-medium text-gray-900">Error Loading Insights</h3>
-            <p className="mt-2 text-sm text-red-600">{error}</p>
-            <button 
+      <div className="w-full min-h-screen flex flex-col">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-medium">{error}</div>
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => navigate('/holes')}
-              className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-950 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              className="mt-4"
             >
               Back to Holes
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
-  
+
+  const groupedEntries = groupEntriesBySource();
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title={hole?.name || 'Insights'} />
-      
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* Top section with hole info */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="h-4 w-4 text-gray-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
+    <div className="w-full min-h-screen bg-white flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="w-full px-4 sm:px-6 bg-white border-b border-gray-200 flex flex-col justify-start items-center gap-2.5">
+        <div className="w-full py-3 inline-flex justify-between items-center">
+          {/* Left: Back button */}
+          <div className="flex justify-start items-center gap-2.5">
+            <div className="rounded flex justify-start items-center gap-2">
+              <div 
+                className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded"
+                onClick={() => navigate('/holes')}
+              >
+                <div className="w-5 h-5 relative overflow-hidden">
+                  <Icons.BackIcon />
                 </div>
-                <div className="ml-4">
-                  <h2 className="text-lg font-medium text-gray-900">{hole?.name}</h2>
-                  <p className="text-sm text-gray-500">
-                    {entries.length} insights · 
-                    {sessions.length > 0 
-                      ? ` Last updated: ${formatDate(sessions[0].startTime)}` 
-                      : ' No sessions'}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Session filter dropdown */}
-              <div className="flex items-center">
-                <label htmlFor="session-select" className="mr-2 text-sm text-gray-700">
-                  Session:
-                </label>
-                <select
-                  id="session-select"
-                  value={selectedSession}
-                  onChange={(e) => handleSessionChange(e.target.value)}
-                  className="max-w-xs px-3 py-2 border border-gray-300 rounded-md text-sm"
-                >
-                  <option value="all">All Sessions</option>
-                  {sessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {session.name || formatDate(session.startTime)}
-                    </option>
-                  ))}
-                </select>
-                
-                <button
-                  onClick={() => setHidePageInfo(!hidePageInfo)}
-                  className="ml-4 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                >
-                  {hidePageInfo ? 'Show URLs' : 'Hide URLs'}
-                </button>
               </div>
             </div>
           </div>
-          
-          {/* Content section */}
-          <div className="flex flex-col lg:flex-row">
-            {/* Insights list */}
-            <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+
+          {/* Center: Hole info */}
+          <div className="hidden md:flex justify-start items-center gap-4 lg:gap-6">
+            <div className="flex justify-start items-center gap-4">
+              <div className="w-6 h-6 relative overflow-hidden">
+                <Icons.LightbulbIcon />
+              </div>
+              <div className="flex justify-start items-center gap-2">
+                <div className="text-center justify-center text-text-primary-light text-title-md leading-normal truncate max-w-32 lg:max-w-52">
+                  {hole?.name}
+                </div>
+                <div className="justify-center text-text-secondary-light text-body-lg-rg leading-snug">
+                  {entries.length}
+                </div>
+              </div>
+            </div>
+            <div className="hidden lg:flex justify-start items-center gap-2">
+              <div className="w-4 h-4 relative">
+                <Icons.HourglassIcon />
+              </div>
+              <div className="justify-center text-text-tertiary-light text-body-lg-rg leading-snug">
+                {getTotalSessionTime()}
+              </div>
+            </div>
+            <div className="hidden lg:flex justify-start items-center gap-2">
+              <div className="w-4 h-4 relative">
+                <Icons.TimeIcon />
+              </div>
+              <div className="justify-center text-text-tertiary-light text-body-lg-rg leading-snug">
+                {hole?.updatedAt ? formatSessionDate(hole.updatedAt) : ''}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: Hole name only */}
+          <div className="md:hidden flex-1 text-center">
+            <div className="text-text-primary-light text-title-md leading-normal truncate">
+              {hole?.name}
+            </div>
+          </div>
+
+          {/* Right: Log out */}
+          <div className="flex justify-start items-center gap-4">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                try {
+                  logOut();
+                } catch (error) {
+                  console.error('Logout failed:', error);
+                }
+              }}
+              className="text-sm sm:text-base"
+            >
+              Log out
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 w-full px-4 sm:px-6 lg:px-24 flex flex-col justify-start items-center gap-2.5 overflow-hidden">
+        <div className="w-full flex-1 max-w-[1520px] py-6 sm:py-10 flex flex-col xl:flex-row justify-center items-start gap-6 xl:gap-10 transition-all duration-300 ease-in-out">
+          {/* Left: Insights List */}
+          <div className={`flex-1 w-full px-1 sm:px-3 flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out ${
+            showHighlights ? 'max-w-[1280px]' : 'max-w-none'
+          }`}>
+            {/* Top Controls */}
+            <div className="w-full h-auto flex flex-col sm:flex-row sm:h-10 justify-between items-start sm:items-center gap-4 sm:gap-0">
+              <div className="flex justify-start items-center gap-2">
+                <div className="justify-center text-text-primary-light text-title-md leading-normal">Insights in</div>
+                <div className="h-9 px-3 rounded-lg flex justify-start items-center gap-3">
+                  <div className="justify-center text-text-primary-light text-title-md leading-normal">
+                    {selectedSession === 'all' ? 'All' : 
+                     sessions.find(s => s.id === selectedSession)?.name || 'Session'}
+                  </div>
+                  <div className="w-2 h-2 relative overflow-hidden">
+                    <Icons.ChevronRightIcon />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 w-full sm:w-auto">
+                {/* Search and filter */}
+                <div className="flex justify-end items-center gap-2 w-full sm:max-w-96">
+                  <div className="flex-1 sm:max-w-80 flex justify-end items-center gap-2">
+                    <SingleLineTextField
+                      size="md"
+                      placeholder="Search insights..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      isDisabled={false}
+                      error={false}
+                      className="flex-1"
+                    />
+                    <div className="rounded flex justify-start items-center gap-2">
+                      <div className="w-9 h-9 flex justify-center items-center gap-2.5">
+                        <div className="w-5 h-5 relative overflow-hidden">
+                          <Icons.SearchIcon />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded flex justify-start items-center gap-2">
+                    <div className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded">
+                      <div className="w-5 h-5 relative">
+                        <Icons.FilterIcon />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Hide page info checkbox */}
+                <div className="p-0.5 flex justify-start items-center gap-2">
+                  <div className="w-4 h-4 flex justify-center items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={hidePageInfo}
+                      onChange={(e) => setHidePageInfo(e.target.checked)}
+                      className="w-4 h-4 rounded-sm border border-gray-300"
+                    />
+                  </div>
+                  <div className="justify-start text-text-primary-light text-body-md-rg leading-none">Hide page info</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Insights Content */}
+            <div className="w-full flex-1 max-h-[600px] xl:h-[696px] flex flex-col justify-start items-start gap-6 sm:gap-10 overflow-y-auto">
               {loading && (
-                <div className="flex justify-center items-center p-8">
-                  <svg className="animate-spin h-6 w-6 text-gray-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <div className="w-full flex justify-center items-center py-20">
+                  <div className="text-gray-700">Loading insights...</div>
                 </div>
               )}
               
               {!loading && entries.length === 0 && (
-                <div className="text-center py-12">
-                  <svg className="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m-6-8h6M5 8h14M5 12h14M5 16h14M5 20h14"></path>
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No insights found</h3>
-                  <p className="mt-1 text-sm text-gray-500">Start a new session to gather insights for this hole.</p>
+                <div className="w-full flex flex-col justify-center items-center py-20">
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 bg-gray-200 rounded-full mb-5" />
+                  <div className="text-center text-text-secondary-light text-title-md">No insights yet</div>
                 </div>
               )}
-              
-              {!loading && entries.length > 0 && (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Content
-                      </th>
-                      {!hidePageInfo && (
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Source
-                        </th>
-                      )}
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Captured At
-                      </th>
-                      <th scope="col" className="relative px-6 py-3 w-12">
-                        <span className="sr-only">Select</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {entries.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-gray-900 whitespace-pre-wrap">{entry.content}</p>
-                        </td>
-                        {!hidePageInfo && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-950 flex items-center">
-                              <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-                              </svg>
-                              <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
-                                {getDomain(entry.sourceUrl)}
-                              </a>
+
+              {!loading && Object.keys(groupedEntries).map((sourceUrl, index) => (
+                <div key={sourceUrl} className="w-full flex flex-col justify-start items-start gap-5">
+                  {/* Page Info Section */}
+                  {!hidePageInfo && (
+                    <div className="flex flex-col justify-start items-start gap-2">
+                      <div className="flex justify-start items-center gap-3 sm:gap-4">
+                        <img 
+                          className="w-16 h-8 sm:w-20 sm:h-10 rounded border border-gray-200 flex-shrink-0" 
+                          src={`https://www.google.com/s2/favicons?domain=${getDomain(sourceUrl)}&sz=64`}
+                          alt="Site favicon"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/80x40/f3f4f6/9ca3af?text=?';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0 inline-flex flex-col justify-start items-start gap-0.5">
+                          <div className="justify-center text-text-primary-light text-body-lg-rg leading-snug truncate w-full">
+                            {getDomain(sourceUrl)}
+                          </div>
+                          <div className="inline-flex justify-start items-start gap-1 text-text-tertiary-light text-body-sm-rg">
+                            <div className="leading-none">
+                              {groupedEntries[sourceUrl][0]?.capturedAt ? formatDate(groupedEntries[sourceUrl][0].capturedAt) : ''}
                             </div>
-                          </td>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-xs text-gray-500">{formatDate(entry.capturedAt)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <input
-                            type="checkbox"
-                            checked={selectedEntries.includes(entry.id)}
-                            onChange={() => toggleEntrySelection(entry.id)}
-                            className="h-4 w-4 text-gray-950 focus:ring-gray-500 border-gray-300 rounded"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            
-            {/* Highlights panel */}
-            {selectedEntries.length > 0 && (
-              <div className="w-64 lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-medium text-gray-900">Highlights</h3>
-                  <button
-                    onClick={() => setSelectedEntries([])}
-                    className="text-xs text-gray-600 hover:text-gray-900"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {entries
-                    .filter(entry => selectedEntries.includes(entry.id))
-                    .map(entry => (
-                      <div key={entry.id} className="bg-white rounded-lg p-3 shadow-sm">
-                        <p className="text-sm text-gray-800">{entry.content}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {!hidePageInfo && getDomain(entry.sourceUrl)}
-                        </p>
+                            <div className="text-center leading-none">·</div>
+                            <div className="leading-none truncate">
+                              {sessions.find(s => groupedEntries[sourceUrl].some(e => e.sessionId === s.id))?.name || 'Session'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    ))
-                  }
+                    </div>
+                  )}
+
+                  {/* Insights for this source */}
+                  <div className="w-full flex flex-col justify-start items-start gap-3 sm:gap-5">
+                    {groupedEntries[sourceUrl].map((entry) => (
+                      <div 
+                        key={entry.id}
+                        className={`w-full pl-3 sm:pl-4 pr-3 sm:pr-5 py-2 sm:py-1 border-l-2 border-line-tertiary inline-flex justify-start items-start gap-2.5 cursor-pointer hover:border-gray-400 transition-colors ${
+                          selectedEntries.includes(entry.id) ? 'border-line-tertia bg-fill-hover-secondary-light' : ''
+                        }`}
+                        onClick={() => toggleEntrySelection(entry.id)}
+                      >
+                        <div className="flex-1 justify-center text-text-primary-light text-body-lg-rg leading-snug">
+                          {entry.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Highlights Panel */}
+          <div className={`w-full xl:w-96 flex justify-center items-start gap-2.5 transition-all duration-300 ease-in-out ${
+            showHighlights 
+              ? 'translate-x-0 opacity-100' 
+              : 'xl:translate-x-full xl:opacity-0 xl:w-0 xl:overflow-hidden hidden xl:flex'
+          }`}>
+            <div className="flex-1 xl:self-stretch p-4 sm:p-5 bg-gray-25 rounded-2xl inline-flex flex-col justify-start items-start gap-5">
+              {/* Highlights Header */}
+              <div className="w-full h-12 pr-0.5 rounded-lg inline-flex justify-between items-center overflow-hidden">
+                <div className="flex justify-start items-center gap-2">
+                  <div className="w-[20px] h-[20px] relative">
+                    <Icons.HighlightIcon />
+                  </div>
+                  <div className="justify-center text-text-primary-light text-title-md leading-normal">Highlights</div>
+                </div>
+                <div className="rounded flex justify-start items-center gap-2">
+                  <Button
+                    variant="tertiary"
+                    size="md"
+                    isIconOnly
+                    leftIcon={<Icons.HideTabIcon />}
+                    showLeftIcon
+                    onClick={() => setShowHighlights(!showHighlights)}
+                  >
+                    <Icons.HideTabIcon />
+                  </Button>
                 </div>
               </div>
-            )}
+
+              {/* Highlights Content */}
+              <div className="w-full inline-flex justify-start items-start gap-1">
+                <div className="flex-1 inline-flex flex-col justify-start items-start gap-3">
+                  {selectedEntries.length === 0 ? (
+                    <div className="w-full text-center py-10 text-text-tertiary-light text-body-md-rg">
+                      Click on insights to add them to highlights
+                    </div>
+                  ) : (
+                    entries
+                      .filter(entry => selectedEntries.includes(entry.id))
+                      .map(entry => (
+                        <div 
+                          key={entry.id}
+                          className="w-full pl-2 pr-5 py-1 inline-flex justify-center items-center gap-2.5"
+                        >
+                          <div className="flex-1 justify-center text-text-primary-light text-body-lg-rg leading-snug">
+                            {entry.content}
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+                <div className="hidden xl:block h-72 p-1 flex justify-start items-center gap-2.5">
+                  <div className="w-1 self-stretch bg-gray-200 rounded" />
+                </div>
+              </div>
+
+              {selectedEntries.length > 0 && (
+                <button
+                  onClick={handleClearHighlights}
+                  className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* Floating Highlights Toggle Button - appears when panel is hidden */}
+      {!showHighlights && (
+        <div className="fixed right-0 top-[120px] z-10">
+          <button
+            onClick={() => setShowHighlights(true)}
+            className="w-12 h-12 bg-white border-l border-t border-b border-gray-200 rounded-tl-2xl rounded-bl-2xl flex justify-center items-center hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <div className="w-5 h-5 relative">
+              <Icons.HighlightIcon />
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 } 

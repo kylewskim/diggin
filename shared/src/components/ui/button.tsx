@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@/utils'
+import { cn } from '../../utils/cn'
 
 export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   variant: 'primary' | 'secondary' | 'tertiary'
