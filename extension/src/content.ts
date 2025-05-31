@@ -1,192 +1,175 @@
-// 클립보드 모니터링을 위한 content script
-console.log('[DIGGIN] Content Script: Initializing clipboard monitor');
+console.log("[DIGGIN] Content Script: Initializing clipboard monitor v4.4");
 
-// 백그라운드 스크립트 연결 상태
-let clipboardPort: chrome.runtime.Port | null = null;
-let isConnected = false;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAY = 3000; // 3초
-
-// 백그라운드 스크립트에 연결
-function connectToBackground() {
+// Extension context validation - prevent invalidation errors
+function isExtensionContextValid(): boolean {
   try {
-    console.log('[DIGGIN] Content Script: Connecting to background script');
-    clipboardPort = chrome.runtime.connect({ name: "clipboard" });
-    isConnected = true;
-    reconnectAttempts = 0;
+    // Multiple checks to ensure extension context is valid
+    if (typeof chrome === 'undefined' || !chrome.runtime) {
+      return false;
+    }
     
-    console.log('[DIGGIN] Content Script: Connection established');
+    // Check if runtime ID exists
+    if (!chrome.runtime.id) {
+      return false;
+    }
     
-    // 테스트 메시지 전송
-    clipboardPort.postMessage({
-      action: 'CONNECTION_TEST',
-      timestamp: Date.now()
-    });
+    // Try to access extension URL - this will throw if context is invalid
+    chrome.runtime.getURL('');
     
-    // 메시지 수신 처리
-    clipboardPort.onMessage.addListener((message) => {
-      console.log('[DIGGIN] Content Script: Received message from background:', message.action);
-      
-      if (message.action === 'COPY_SAVED') {
-        if (message.success) {
-          console.log('[DIGGIN] Content Script: Copy saved successfully, insight count:', message.insightCount);
-        } else {
-          console.warn('[DIGGIN] Content Script: Failed to save copy:', message.error);
-        }
-      } else if (message.action === 'CONNECTION_TEST_RESPONSE') {
-        console.log('[DIGGIN] Content Script: Connection test successful, auth status:', 
-          message.authStatus ? 'Authenticated' : 'Not authenticated', 
-          'Session status:', 
-          message.sessionStatus
-        );
-      }
-    });
+    // Additional check for sendMessage function
+    if (typeof chrome.runtime.sendMessage !== 'function') {
+      return false;
+    }
     
-    // 연결 해제 처리
-    clipboardPort.onDisconnect.addListener(() => {
-      console.warn('[DIGGIN] Content Script: Disconnected from background');
-      isConnected = false;
-      clipboardPort = null;
-      
-      // 연결 해제 시 자동 재연결 시도
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++;
-        console.log(`[DIGGIN] Content Script: Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
-        
-        setTimeout(() => {
-          connectToBackground();
-        }, RECONNECT_DELAY);
-      } else {
-        console.error('[DIGGIN] Content Script: Maximum reconnect attempts reached');
-      }
-    });
+    return true;
   } catch (error) {
-    console.error('[DIGGIN] Content Script: Failed to connect to background script:', error);
-    isConnected = false;
-    clipboardPort = null;
-    
-    // 연결 실패 시 자동 재연결 시도
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttempts++;
-      console.log(`[DIGGIN] Content Script: Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
-      
-      setTimeout(() => {
-        connectToBackground();
-      }, RECONNECT_DELAY);
-    } else {
-      console.error('[DIGGIN] Content Script: Maximum reconnect attempts reached');
-    }
+    // Context is invalid - this is expected behavior, not an error
+    console.log('[DIGGIN] Content Script: Extension context invalid (expected during navigation)');
+    return false;
   }
 }
 
-// 초기 연결 설정
-connectToBackground();
-
-// 클립보드 copy 이벤트 핸들러
-async function handleCopy(event: ClipboardEvent) {
-  console.log('[DIGGIN] Content Script: Copy event detected');
-  
-  try {
-    // 클립보드에서 텍스트 가져오기
-    let text = '';
+// Simplified safe message sending - no response expected for copy events
+function safeSendMessage(message: any): void {
+  // Check extension context before sending
+  if (!isExtensionContextValid()) {
+    console.log('[DIGGIN] Content Script: Extension context invalid, storing message for recovery');
     
-    // clipboardData API에서 텍스트 가져오기 시도
-    if (event.clipboardData && event.clipboardData.getData) {
-      text = event.clipboardData.getData('text/plain');
-    }
-    
-    // clipboardData에서 텍스트를 가져오지 못한 경우 navigator.clipboard API 시도
-    if (!text && navigator.clipboard && navigator.clipboard.readText) {
-      try {
-        text = await navigator.clipboard.readText();
-      } catch (err) {
-        console.warn('[DIGGIN] Content Script: Failed to read from clipboard API:', err);
-      }
-    }
-    
-    if (!text) {
-      console.warn('[DIGGIN] Content Script: No text found in clipboard');
-      return;
-    }
-    
-    console.log('[DIGGIN] Content Script: Copied text length:', text.length);
-    
-    // 백그라운드 스크립트 연결 확인
-    if (!isConnected || !clipboardPort) {
-      console.warn('[DIGGIN] Content Script: Not connected to background, reconnecting...');
-      connectToBackground();
-      
-      // 연결이 성공하지 않으면 종료
-      if (!isConnected || !clipboardPort) {
-        console.error('[DIGGIN] Content Script: Failed to reconnect to background');
-        return;
-      }
-    }
-    
-    // 복사된 텍스트 정보 전송
-    clipboardPort.postMessage({
-      action: 'COPY_EVENT',
-      text: text,
-      url: window.location.href,
-      title: document.title,
-      timestamp: Date.now()
-    });
-    
-    console.log('[DIGGIN] Content Script: Copy event sent to background');
-  } catch (err) {
-    console.error('[DIGGIN] Content Script: Error handling copy event:', err);
-  }
-}
-
-// Copy 이벤트 리스너 등록
-document.addEventListener('copy', handleCopy);
-
-// 페이지 가시성 변경 시 연결 상태 확인
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    console.log('[DIGGIN] Content Script: Page became visible, checking connection...');
-    
-    // 연결 상태 확인 및 필요시 재연결
-    if (!isConnected || !clipboardPort) {
-      console.log('[DIGGIN] Content Script: Not connected, reconnecting...');
-      connectToBackground();
-    } else {
-      console.log('[DIGGIN] Content Script: Connection already active');
-      
-      // 테스트 메시지 전송
-      clipboardPort.postMessage({
-        action: 'CONNECTION_TEST',
-        timestamp: Date.now()
+    // Store failed message data locally for potential recovery
+    try {
+      const failedMessages = JSON.parse(localStorage.getItem('diggin_failed_messages') || '[]');
+      failedMessages.push({
+        message,
+        timestamp: Date.now(),
+        url: window.location.href
       });
+      
+      // Keep only last 10 failed messages to prevent storage bloat
+      if (failedMessages.length > 10) {
+        failedMessages.splice(0, failedMessages.length - 10);
+      }
+      
+      localStorage.setItem('diggin_failed_messages', JSON.stringify(failedMessages));
+      console.log('[DIGGIN] Content Script: Message stored locally for recovery');
+    } catch (storageError) {
+      console.warn('[DIGGIN] Content Script: Failed to store message locally:', storageError);
+    }
+    
+    return;
+  }
+
+  // Context is valid, send message safely - NO RESPONSE EXPECTED
+  try {
+    chrome.runtime.sendMessage(message);
+    console.log("[DIGGIN] Content Script: Message sent successfully");
+  } catch (error) {
+    // Only log actual errors, not context invalidation
+    if (error instanceof Error && error.message.includes('Extension context invalidated')) {
+      console.log('[DIGGIN] Content Script: Extension context became invalid during send');
+    } else {
+      console.error('[DIGGIN] Content Script: Error sending message:', error);
+    }
+    
+    // Store message locally on any send error
+    try {
+      const failedMessages = JSON.parse(localStorage.getItem('diggin_failed_messages') || '[]');
+      failedMessages.push({
+        message,
+        timestamp: Date.now(),
+        url: window.location.href,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      localStorage.setItem('diggin_failed_messages', JSON.stringify(failedMessages));
+    } catch (storageError) {
+      console.warn('[DIGGIN] Content Script: Failed to store error message:', storageError);
     }
   }
+}
+
+// Enhanced copy event handler with safe messaging
+const handleCopy = () => {
+  console.log("[DIGGIN] Content Script: Copy event detected");
+  
+  const copiedText = window.getSelection()?.toString();
+  
+  if (!copiedText || copiedText.trim().length === 0) {
+    console.log("[DIGGIN] Content Script: No text selected");
+    return;
+  }
+  
+  console.log("[DIGGIN] Content Script: Copied text length:", copiedText.length);
+  
+  // Use safe message sending - fire and forget, no response expected
+  safeSendMessage({
+    action: "COPY_EVENT",
+    text: copiedText.trim(),
+    url: window.location.href,
+    title: document.title,
+    timestamp: Date.now()
+  });
+};
+
+// Register copy event listener
+document.addEventListener("copy", handleCopy);
+
+// Enhanced message listener with context validation
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Validate context before processing messages
+  if (!isExtensionContextValid()) {
+    console.log('[DIGGIN] Content Script: Cannot process message - extension context invalid (expected during navigation)');
+    return false;
+  }
+  
+  console.log("[DIGGIN] Content Script: Received message:", message);
+  
+  if (message.type === "ANIMATE" || message.action === "ANIMATE") {
+    console.log("[DIGGIN] Content Script: Animation requested");
+    sendResponse({ success: true });
+  }
+  
+  return true;
 });
 
-// 주기적으로 연결 상태 확인 (매 5분마다)
-setInterval(() => {
-  if (!isConnected || !clipboardPort) {
-    console.log('[DIGGIN] Content Script: Connection check failed, reconnecting...');
-    connectToBackground();
-  } else {
-    console.log('[DIGGIN] Content Script: Connection check passed');
-    
-    // 테스트 메시지 전송
-    clipboardPort.postMessage({
-      action: 'CONNECTION_TEST',
-      timestamp: Date.now()
-    });
+// Recovery mechanism - attempt to send failed messages when context becomes valid
+function attemptMessageRecovery(): void {
+  if (!isExtensionContextValid()) {
+    return;
   }
-}, 5 * 60 * 1000);
-
-// 페이지 언로드 시 이벤트 처리
-window.addEventListener('beforeunload', () => {
-  console.log('[DIGGIN] Content Script: Page unloading, final connection check');
   
-  if (clipboardPort) {
-    clipboardPort.postMessage({
-      action: 'PAGE_UNLOAD',
-      timestamp: Date.now()
-    });
+  try {
+    const failedMessages = JSON.parse(localStorage.getItem('diggin_failed_messages') || '[]');
+    
+    if (failedMessages.length > 0) {
+      console.log(`[DIGGIN] Content Script: Attempting to recover ${failedMessages.length} failed messages`);
+      
+      failedMessages.forEach((failedMessage: any, index: number) => {
+        // Only retry messages from the last 5 minutes to avoid spam
+        const messageAge = Date.now() - failedMessage.timestamp;
+        if (messageAge < 5 * 60 * 1000) { // 5 minutes
+          setTimeout(() => {
+            safeSendMessage(failedMessage.message);
+            console.log(`[DIGGIN] Content Script: Recovered message ${index + 1} sent`);
+          }, index * 100); // Stagger sends to avoid overwhelming
+        }
+      });
+      
+      // Clear recovered messages
+      localStorage.removeItem('diggin_failed_messages');
+    }
+  } catch (error) {
+    console.warn('[DIGGIN] Content Script: Error during message recovery:', error);
   }
-}); 
+}
+
+// Periodically check for context validity and attempt recovery
+setInterval(() => {
+  if (isExtensionContextValid()) {
+    attemptMessageRecovery();
+  }
+}, 10000); // Check every 10 seconds
+
+// Initial recovery attempt
+setTimeout(attemptMessageRecovery, 1000); // Wait 1 second after load
+
+console.log("[DIGGIN] Content Script: Initialization complete v4.4 - Enhanced error handling and context validation"); 
+console.log('[DIGGIN] Content Script: Initialization complete - monitoring copy events with graceful error handling'); 

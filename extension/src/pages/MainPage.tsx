@@ -69,6 +69,37 @@ const MainPage: React.FC = () => {
     }
   };
 
+  // Chrome Identity API 로그아웃 (테스트용)
+  const handleChromeLogout = async () => {
+    try {
+      console.log('[DIGGIN] MainPage: Triggering Chrome Identity API logout');
+      
+      // 백그라운드 스크립트에 로그아웃 메시지 전송
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+        chrome.runtime.sendMessage({
+          action: 'TRIGGER_LOGOUT'
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[DIGGIN] MainPage: Logout message error:', chrome.runtime.lastError);
+            return;
+          }
+          
+          if (response?.success) {
+            console.log('[DIGGIN] MainPage: Chrome Identity API logout successful');
+            // 페이지 새로고침하여 상태 초기화
+            window.location.reload();
+          } else {
+            console.error('[DIGGIN] MainPage: Chrome Identity API logout failed:', response?.error);
+          }
+        });
+      } else {
+        console.warn('[DIGGIN] MainPage: Not in extension environment');
+      }
+    } catch (error) {
+      console.error('[DIGGIN] MainPage: Chrome logout failed:', error);
+    }
+  };
+
   // 홀 리스트로 돌아가기
   const handleBackClick = () => {
     navigate('/hole-list');
@@ -124,6 +155,14 @@ const MainPage: React.FC = () => {
           >
             Create a Hole
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleChromeLogout}
+            className="self-stretch mt-2"
+          >
+            🧪 Test Chrome Logout
+          </Button>
         </div>
       </div>
     </div>
@@ -176,6 +215,14 @@ const MainPage: React.FC = () => {
             className="self-stretch"
           >
             Create a Hole
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleChromeLogout}
+            className="self-stretch mt-2"
+          >
+            🧪 Test Chrome Logout
           </Button>
         </div>
       </div>

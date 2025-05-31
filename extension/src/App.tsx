@@ -34,8 +34,15 @@ function checkActiveSession(): Promise<any> {
       action: 'CHECK_ACTIVE_SESSION'
     }, (response) => {
       if (chrome.runtime.lastError) {
-        console.error('Error checking active session:', chrome.runtime.lastError);
-        reject(chrome.runtime.lastError);
+        // Properly serialize the error message to prevent [object Object]
+        const errorMessage = chrome.runtime.lastError.message || 'Unknown Chrome runtime error';
+        console.error('Error checking active session:', errorMessage);
+        console.error('Error details:', {
+          action: 'CHECK_ACTIVE_SESSION',
+          error: errorMessage,
+          timestamp: new Date().toISOString()
+        });
+        reject(new Error(errorMessage));
         return;
       }
       
@@ -48,7 +55,12 @@ function checkActiveSession(): Promise<any> {
           elapsedTimeInSeconds: response.activeSession?.elapsedTimeInSeconds
         });
       } else {
-        console.error('Failed to check active session:', response?.error);
+        const errorMessage = response?.error || 'Unknown error checking active session';
+        console.error('Failed to check active session:', errorMessage);
+        console.error('Response details:', {
+          response: response,
+          timestamp: new Date().toISOString()
+        });
         resolve({ hasActiveSession: false });
       }
     });

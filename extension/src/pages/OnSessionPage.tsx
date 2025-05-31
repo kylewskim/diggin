@@ -55,7 +55,6 @@ const OnSessionPage: React.FC = () => {
 
   // 시간 포맷팅 함수
   const formatDuration = (seconds: number): string => {
-    // console.log("Formatting duration (seconds):", seconds);
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -66,8 +65,83 @@ const OnSessionPage: React.FC = () => {
       secs.toString().padStart(2, '0')
     ].join(':');
 
-    // console.log(`Formatted time: ${formattedTime} (${hours}h ${minutes}m ${secs}s)`);
     return formattedTime;
+  };
+
+  // Extension context 체크 함수들 (강화된 버전)
+  const isExtensionEnvironment = (): boolean => {
+    try {
+      return typeof chrome !== 'undefined' && 
+             chrome.runtime && 
+             chrome.runtime.sendMessage && 
+             typeof chrome.runtime.sendMessage === 'function';
+    } catch (error) {
+      console.warn('[DIGGIN] OnSessionPage: Extension environment check failed:', error);
+      return false;
+    }
+  };
+
+  const isChromeRuntimeAvailable = (): boolean => {
+    try {
+      return typeof chrome !== 'undefined' && 
+             !!chrome.runtime && 
+             !!chrome.runtime.sendMessage;
+    } catch (error) {
+      console.warn('[DIGGIN] OnSessionPage: Chrome runtime not available:', error);
+      return false;
+    }
+  };
+
+  // Chrome API 호출을 위한 안전한 래퍼 함수
+  const safeChromeMessage = (message: any, callback?: (response: any) => void): Promise<any> => {
+    return new Promise((resolve) => {
+      if (!isChromeRuntimeAvailable()) {
+        console.warn('[DIGGIN] OnSessionPage: Chrome runtime not available, skipping message:', JSON.stringify(message));
+        resolve(null);
+        return;
+      }
+
+      try {
+        chrome.runtime.sendMessage(message, (response) => {
+          if (chrome.runtime.lastError) {
+            // Properly serialize the error message to prevent [object Object]
+            const errorMessage = chrome.runtime.lastError.message || 'Unknown Chrome runtime error';
+            console.warn('[DIGGIN] OnSessionPage: Chrome runtime error:', errorMessage);
+            
+            // Ensure all error details are properly serialized
+            const errorDetails = {
+              message: JSON.stringify(message),
+              error: errorMessage,
+              timestamp: new Date().toISOString()
+            };
+            console.warn('[DIGGIN] OnSessionPage: Error details:', JSON.stringify(errorDetails));
+            resolve(null);
+          } else {
+            if (callback) callback(response);
+            resolve(response);
+          }
+        });
+        
+        // 타임아웃 설정 (응답이 없는 경우 대비)
+        setTimeout(() => {
+          console.warn('[DIGGIN] OnSessionPage: Message timeout after 2 seconds:', JSON.stringify(message));
+          resolve(null);
+        }, 2000);
+      } catch (error) {
+        // Properly serialize any caught errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[DIGGIN] OnSessionPage: Error sending Chrome message:', errorMessage);
+        
+        // Ensure all error details are properly serialized
+        const errorDetails = {
+          message: JSON.stringify(message),
+          error: errorMessage,
+          timestamp: new Date().toISOString()
+        };
+        console.error('[DIGGIN] OnSessionPage: Error details:', JSON.stringify(errorDetails));
+        resolve(null);
+      }
+    });
   };
 
   // 세션 정보 로드
@@ -86,27 +160,31 @@ const OnSessionPage: React.FC = () => {
       try {
         setLoading(true);
         
-        // 먼저 백그라운드에서 세션 상태 가져오기 시도
-        const getBackgroundSessionState = (): Promise<{isActive: boolean, duration: number} | null> => {
-          return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ 
-              type: 'GET_SESSION_STATUS',
+        // 먼저 백그라운드에서 세션 상태 가져오기 시도 (안전한 방식)
+        const getBackgroundSessionState = async (): Promise<{isActive: boolean, duration: number} | null> => {
+          if (!isChromeRuntimeAvailable()) {
+            console.warn('[DIGGIN] OnSessionPage: Chrome runtime not available, skipping background session check');
+            return null;
+          }
+
+          try {
+            const response = await safeChromeMessage({ 
+              action: 'GET_SESSION_STATUS',
               sessionId: state.sessionId
-            }, (response) => {
-              console.log('Background session status response:', response);
-              if (response && response.sessionId === state.sessionId) {
-                resolve({
-                  isActive: response.isActive,
-                  duration: response.duration
-                });
-              } else {
-                resolve(null);
-              }
             });
             
-            // 타임아웃 설정 (응답이 없는 경우 대비)
-            setTimeout(() => resolve(null), 1000);
-          });
+            console.log('Background session status response:', response);
+            if (response && response.sessionId === state.sessionId) {
+              return {
+                isActive: response.isActive,
+                duration: response.duration
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error('[DIGGIN] OnSessionPage: Error getting background session state:', error);
+            return null;
+          }
         };
         
         const backgroundState = await getBackgroundSessionState();
@@ -155,8 +233,8 @@ const OnSessionPage: React.FC = () => {
           // 현재 세션 시작 시간 설정
           sessionStartTimeRef.current = new Date();
           
-          // 백그라운드 스크립트에 세션 시작 알림
-          chrome.runtime.sendMessage({ 
+          // 백그라운드 스크립트에 세션 시작 알림 (안전한 방식)
+          const startResponse = await safeChromeMessage({ 
             action: 'START_SESSION',
             data: {
               sessionId: state.sessionId,
@@ -164,23 +242,22 @@ const OnSessionPage: React.FC = () => {
               sessionName: state.sessionName,
               savedDuration: initialDuration
             }
-          }, (response) => {
-            if (response && response.success) {
-              console.log('[DIGGIN] OnSessionPage: Session started in background script');
-              // 첫 시작 플래그 업데이트
-              setIsFirstStart(false);
-            } else {
-              console.error('[DIGGIN] OnSessionPage: Failed to start session in background:', response?.error);
-            }
           });
+          
+          if (startResponse && startResponse.success) {
+            console.log('[DIGGIN] OnSessionPage: Session started in background script');
+            setIsFirstStart(false);
+          } else {
+            console.warn('[DIGGIN] OnSessionPage: Failed to start session in background, continuing without extension features');
+          }
         } else {
           // 이미 활성화된 세션이면 상태만 동기화
           setIsActive(true);
           sessionStartTimeRef.current = new Date();
           console.log('Session is already active in background, syncing state');
           
-          // 백그라운드에 세션 계속 요청
-          chrome.runtime.sendMessage({ 
+          // 백그라운드에 세션 계속 요청 (안전한 방식)
+          await safeChromeMessage({ 
             action: 'SESSION_CONTINUE',
             data: {
               sessionId: state.sessionId,
@@ -188,8 +265,6 @@ const OnSessionPage: React.FC = () => {
               sessionName: state.sessionName,
               savedDuration: initialDuration
             }
-          }, (response) => {
-            console.log('[DIGGIN] OnSessionPage: Session continue response:', response);
           });
         }
         
@@ -227,11 +302,9 @@ const OnSessionPage: React.FC = () => {
     timerRef.current = window.setInterval(() => {
       setDisplayDuration(prev => {
         const newDuration = prev + 1;
-        // console.log(`Timer tick: ${prev} → ${newDuration} seconds`);
         
         // Firebase에 업데이트 (1분마다)
         if (newDuration % 60 === 0) {
-          // console.log(`Updating Firebase duration to ${newDuration} seconds`);
           if (session?.id) {
             updateSessionDuration(session.id, newDuration).catch(console.error);
           }
@@ -281,15 +354,15 @@ const OnSessionPage: React.FC = () => {
       // 세션 비활성화
       setIsActive(false);
 
-      // 브라우저 로컬 스토리지에서 활성 세션 정보 삭제 및 세션 종료 표시 (App.tsx에서 체크하는 부분)
+      // 브라우저 로컬 스토리지에서 활성 세션 정보 삭제 및 세션 종료 표시
       localStorage.removeItem('activeSession');
-      localStorage.setItem('sessionEnded', 'true'); // 세션이 의도적으로 종료되었음을 표시
+      localStorage.setItem('sessionEnded', 'true');
 
-      // 1분 후에 sessionEnded 플래그 자동 제거 (다음 세션 시작을 방해하지 않도록)
+      // 1분 후에 sessionEnded 플래그 자동 제거
       setTimeout(() => {
         localStorage.removeItem('sessionEnded');
         console.log('[DIGGIN] OnSessionPage: Cleared sessionEnded flag after timeout');
-      }, 60000); // 60초 타임아웃
+      }, 60000);
 
       const sessionRef = doc(db, 'sessions', state.sessionId);
       
@@ -307,18 +380,17 @@ const OnSessionPage: React.FC = () => {
         endedAt: Timestamp.now()
       });
       
-      // 백그라운드 서비스에 세션 종료 알림
-      chrome.runtime.sendMessage({
+      // 백그라운드 서비스에 세션 종료 알림 (안전한 방식)
+      const endResponse = await safeChromeMessage({
         action: 'END_SESSION',
         data: { sessionId: state.sessionId }
-      }, (response) => {
-        console.log('[DIGGIN] OnSessionPage: END_SESSION response:', response);
-        if (response?.success) {
-          console.log('[DIGGIN] OnSessionPage: Session ended with final duration:', response.finalDuration);
-        } else {
-          console.error('[DIGGIN] OnSessionPage: Error ending session:', response?.error);
-        }
       });
+      
+      if (endResponse?.success) {
+        console.log('[DIGGIN] OnSessionPage: Session ended with final duration:', endResponse.finalDuration);
+      } else {
+        console.warn('[DIGGIN] OnSessionPage: Extension not available, session ended locally only');
+      }
       
       // 다이얼로그 표시
       navigate('/finish-session', {
@@ -366,32 +438,24 @@ const OnSessionPage: React.FC = () => {
         await updateSessionDuration(session.id, totalDuration);
         console.log('[DIGGIN] OnSessionPage: Firestore update completed - Session paused');
         
-        // 백그라운드 스크립트에 세션 일시 정지 알림
+        // 백그라운드 스크립트에 세션 일시 정지 알림 (안전한 방식)
         console.log('[DIGGIN] OnSessionPage: Sending PAUSE_SESSION to Realtime Database');
-        chrome.runtime.sendMessage({ 
+        const pauseResponse = await safeChromeMessage({ 
           action: 'PAUSE_SESSION',
           data: {
             sessionId: session.id,
             holeId: hole?.id || '',
             sessionName: session.name
           }
-        }, (response) => {
-          console.log('[DIGGIN] OnSessionPage: Realtime Database pause response:', response);
-          if (response && response.savedDuration !== undefined) {
-            savedDurationRef.current = response.savedDuration;
-            console.log('[DIGGIN] OnSessionPage: Updated savedDuration from Realtime DB:', response.savedDuration);
-          }
         });
         
-        // 추가: 현재 상태 확인을 위한 명시적 쿼리
-        chrome.runtime.sendMessage({
-          action: 'GET_SESSION_STATE'
-        }, (response) => {
-          console.log('[DIGGIN] OnSessionPage: Realtime DB state after pause:', response ? {
-            isActive: response.isActive,
-            elapsedTimeInSeconds: response.data?.elapsedTimeInSeconds
-          } : 'No response');
-        });
+        if (pauseResponse && pauseResponse.savedDuration !== undefined) {
+          savedDurationRef.current = pauseResponse.savedDuration;
+          console.log('[DIGGIN] OnSessionPage: Updated savedDuration from Realtime DB:', pauseResponse.savedDuration);
+        }
+        
+        // 추가: 현재 상태 확인을 위한 명시적 쿼리 (안전한 방식)
+        await safeChromeMessage({ action: 'GET_SESSION_STATE' });
       } else {
         // 세션 시작/재개
         setIsActive(true);
@@ -415,9 +479,9 @@ const OnSessionPage: React.FC = () => {
         await updateSessionActiveStatus(session.id, true);
         console.log('[DIGGIN] OnSessionPage: Firestore update completed - Session resumed');
         
-        // 백그라운드 스크립트에 세션 시작/재개 알림
+        // 백그라운드 스크립트에 세션 시작/재개 알림 (안전한 방식)
         console.log('[DIGGIN] OnSessionPage: Sending RESUME_SESSION to Realtime Database');
-        chrome.runtime.sendMessage({ 
+        await safeChromeMessage({ 
           action: 'RESUME_SESSION',
           data: {
             sessionId: session.id,
@@ -425,19 +489,10 @@ const OnSessionPage: React.FC = () => {
             sessionName: session.name,
             savedDuration: savedDurationRef.current
           }
-        }, (response) => {
-          console.log('[DIGGIN] OnSessionPage: Realtime Database resume response:', response);
         });
         
-        // 추가: 현재 상태 확인을 위한 명시적 쿼리
-        chrome.runtime.sendMessage({
-          action: 'GET_SESSION_STATE'
-        }, (response) => {
-          console.log('[DIGGIN] OnSessionPage: Realtime DB state after resume:', response ? {
-            isActive: response.isActive,
-            elapsedTimeInSeconds: response.data?.elapsedTimeInSeconds
-          } : 'No response');
-        });
+        // 추가: 현재 상태 확인을 위한 명시적 쿼리 (안전한 방식)
+        await safeChromeMessage({ action: 'GET_SESSION_STATE' });
       }
     } catch (err) {
       console.error('세션 상태 변경 실패:', err);
@@ -472,32 +527,32 @@ const OnSessionPage: React.FC = () => {
       await updateSessionActiveStatus(session.id, false);
       await updateSessionDuration(session.id, totalDuration);
       
-      // 백그라운드 스크립트에 세션 중지 알림
-      chrome.runtime.sendMessage({ 
+      // 백그라운드 스크립트에 세션 중지 알림 (안전한 방식)
+      const stopResponse = await safeChromeMessage({ 
         action: 'END_SESSION',
         data: {
           sessionId: session.id,
           holeId: hole?.id || ''
         }
-      }, (response) => {
-        console.log('[DIGGIN] OnSessionPage: Session stopped response:', response);
-        if (response && response.finalDuration !== undefined) {
-          const finalDuration = response.finalDuration;
-          console.log('[DIGGIN] OnSessionPage: Final session duration:', finalDuration);
-        }
       });
       
-      // 페이지 닫히더라도 백그라운드 스크립트의 정상 작동 확인을 위해
-      // 클립보드 연결 요청 및 로깅
-      try {
-        const port = chrome.runtime.connect({ name: "clipboard" });
-        port.postMessage({ 
-          action: 'CONNECTION_TEST',
-          timestamp: Date.now()
-        });
-        console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
-      } catch (err) {
-        console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+      if (stopResponse && stopResponse.finalDuration !== undefined) {
+        const finalDuration = stopResponse.finalDuration;
+        console.log('[DIGGIN] OnSessionPage: Final session duration:', finalDuration);
+      }
+      
+      // 클립보드 연결 요청 및 로깅 (안전한 방식)
+      if (isChromeRuntimeAvailable()) {
+        try {
+          const port = chrome.runtime.connect({ name: "clipboard" });
+          port.postMessage({ 
+            action: 'CONNECTION_TEST',
+            timestamp: Date.now()
+          });
+          console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
+        } catch (err) {
+          console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+        }
       }
     } catch (err) {
       console.error('Failed to stop timer:', err);
@@ -652,36 +707,17 @@ const OnSessionPage: React.FC = () => {
         console.log('[DIGGIN] OnSessionPage: Missing state, checking for active session');
         
         try {
-          // 활성 세션 확인
-          const activeSession = await new Promise<{
-            sessionId?: string;
-            holeId?: string;
-            sessionName?: string;
-          } | null>((resolve) => {
-            chrome.runtime.sendMessage(
-              { action: 'CHECK_ACTIVE_SESSION' },
-              (response) => {
-                if (response?.success && response?.hasActiveSession && response?.activeSession) {
-                  console.log('[DIGGIN] OnSessionPage: Found active session', response.activeSession);
-                  resolve(response.activeSession);
-                } else {
-                  console.log('[DIGGIN] OnSessionPage: No active session found');
-                  resolve(null);
-                }
-              }
-            );
-            
-            // 타임아웃 설정
-            setTimeout(() => resolve(null), 2000);
-          });
+          // 활성 세션 확인 (안전한 방식)
+          const activeSession = await safeChromeMessage({ action: 'CHECK_ACTIVE_SESSION' });
           
-          if (activeSession && activeSession.sessionId && activeSession.holeId) {
-            sessionId = activeSession.sessionId;
-            holeId = activeSession.holeId;
-            sessionName = activeSession.sessionName || '';
+          if (activeSession?.success && activeSession?.hasActiveSession && activeSession?.activeSession) {
+            const sessionData = activeSession.activeSession;
+            sessionId = sessionData.sessionId;
+            holeId = sessionData.holeId;
+            sessionName = sessionData.sessionName || '';
             console.log('[DIGGIN] OnSessionPage: Using active session data:', { sessionId, holeId, sessionName });
           } else {
-            console.error('[DIGGIN] OnSessionPage: No session ID found from state or active session');
+            console.log('[DIGGIN] OnSessionPage: No active session found');
             navigate('/');
             return;
           }
@@ -692,32 +728,24 @@ const OnSessionPage: React.FC = () => {
         }
       }
       
-      // Realtime Database 세션 상태 확인
-      chrome.runtime.sendMessage({
-        action: 'GET_SESSION_STATE'
-      }, (response) => {
-        console.log('[DIGGIN] OnSessionPage: Current Realtime DB session state:', response ? {
-          isActive: response.isActive,
-          authenticated: response.authenticated,
-          sessionData: response.data
-        } : 'No response');
-      });
-      
-      // 백그라운드 스크립트에 세션 시작 알림
-      chrome.runtime.sendMessage({
+      // Realtime Database 세션 상태 확인 (안전한 방식)
+      await safeChromeMessage({ action: 'GET_SESSION_STATE' });
+
+      // 백그라운드 스크립트에 세션 시작 알림 (안전한 방식)
+      const startResponse = await safeChromeMessage({
         action: 'START_SESSION',
         data: {
           sessionId,
           holeId,
           sessionName
         }
-      }, (response) => {
-        if (response?.success) {
-          console.log('[DIGGIN] OnSessionPage: Session started in Realtime Database successfully');
-        } else {
-          console.error('[DIGGIN] OnSessionPage: Failed to start session in Realtime Database:', response?.error);
-        }
       });
+      
+      if (startResponse?.success) {
+        console.log('[DIGGIN] OnSessionPage: Session started in Realtime Database successfully');
+      } else {
+        console.warn('[DIGGIN] OnSessionPage: Extension not available, continuing without extension features');
+      }
     }
     
     initSession();
@@ -737,16 +765,14 @@ const OnSessionPage: React.FC = () => {
       if (!session) {
         console.log('[DIGGIN] OnSessionPage: No session data available on unmount');
         if (state?.sessionId) {
-          // state만 있는 경우 (세션 데이터 로드 전에 언마운트 된 경우)
-          chrome.runtime.sendMessage({
+          // state만 있는 경우 (세션 데이터 로드 전에 언마운트 된 경우) - 안전한 방식
+          safeChromeMessage({
             action: 'SESSION_CONTINUE',
             data: {
               sessionId: state.sessionId,
               holeId: state.holeId,
               sessionName: state.sessionName
             }
-          }, (response) => {
-            console.log('[DIGGIN] OnSessionPage: Session continuation (using state) response:', response);
           });
         }
         return;
@@ -766,8 +792,8 @@ const OnSessionPage: React.FC = () => {
           });
       }
       
-      // 백그라운드 스크립트에 세션 계속 유지 신호 전송
-      chrome.runtime.sendMessage({
+      // 백그라운드 스크립트에 세션 계속 유지 신호 전송 (안전한 방식)
+      safeChromeMessage({
         action: 'SESSION_CONTINUE',
         data: {
           sessionId: session.id,
@@ -775,23 +801,59 @@ const OnSessionPage: React.FC = () => {
           sessionName: session.name || state?.sessionName,
           savedDuration: finalDuration
         }
-      }, (response) => {
-        console.log('[DIGGIN] OnSessionPage: Session continuation message response:', response);
       });
       
-      // 클립보드 연결 요청 및 로깅
-      try {
-        const port = chrome.runtime.connect({ name: "clipboard" });
-        port.postMessage({ 
-          action: 'CONNECTION_TEST',
-          timestamp: Date.now()
-        });
-        console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
-      } catch (err) {
-        console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+      // 클립보드 연결 요청 및 로깅 (안전한 방식)
+      if (isChromeRuntimeAvailable()) {
+        try {
+          const port = chrome.runtime.connect({ name: "clipboard" });
+          port.postMessage({ 
+            action: 'CONNECTION_TEST',
+            timestamp: Date.now()
+          });
+          console.log('[DIGGIN] OnSessionPage: Clipboard connection established before unmount');
+        } catch (err) {
+          console.error('[DIGGIN] OnSessionPage: Failed to establish clipboard connection:', err);
+        }
       }
     };
   }, [calculateCurrentDuration, navigate, state, session, hole]);
+
+  // 아이콘 ID로 아이콘 가져오기
+  const getIconById = (iconId: string): React.ReactNode => {
+    // Utility 아이콘
+    if (iconId === 'utility-1') return <Icons.SearchIcon />;
+    if (iconId === 'utility-2') return <Icons.AddIcon />;
+    if (iconId === 'utility-3') return <Icons.EditIcon />;
+    if (iconId === 'utility-4') return <Icons.TrashIcon />;
+    if (iconId === 'utility-5') return <Icons.CheckIcon />;
+    if (iconId === 'utility-6') return <Icons.CloseIcon />;
+    if (iconId === 'utility-7') return <Icons.InfoIcon />;
+    if (iconId === 'utility-8') return <Icons.LinkIcon />;
+    if (iconId === 'utility-9') return <Icons.SettingIcon />;
+    if (iconId === 'utility-10') return <Icons.FilterIcon />;
+    
+    // Media 아이콘
+    if (iconId === 'media-1') return <Icons.PlayIcon />;
+    if (iconId === 'media-2') return <Icons.PauseIcon />;
+    if (iconId === 'media-3') return <Icons.StopIcon />;
+    if (iconId === 'media-4') return <Icons.ArchiveIcon />;
+    if (iconId === 'media-5') return <Icons.HideTabIcon />;
+    if (iconId === 'media-6') return <Icons.HighlightIcon />;
+    if (iconId === 'media-7') return <Icons.SortIcon />;
+    if (iconId === 'media-8') return <Icons.ReorderIcon />;
+    if (iconId === 'media-9') return <Icons.OverflowIcon />;
+    if (iconId === 'media-10') return <Icons.ChevronRightIcon />;
+    
+    // Other 아이콘
+    if (iconId === 'other-1') return <Icons.TimeIcon />;
+    if (iconId === 'other-2') return <Icons.HourglassIcon />;
+    if (iconId === 'other-3') return <Icons.LightbulbIcon />;
+    if (iconId === 'other-4') return <Icons.TripleStarsIcon />;
+    if (iconId === 'other-5') return <Icons.BackIcon />;
+
+    return <Icons.InfoIcon />; // Default icon as fallback
+  };
 
   if (loading) {
     return (
@@ -913,42 +975,6 @@ const OnSessionPage: React.FC = () => {
       </div>
     </div>
   );
-};
-
-// 아이콘 ID로 아이콘 가져오기
-const getIconById = (iconId: string): React.ReactNode => {
-  // Utility 아이콘
-  if (iconId === 'utility-1') return <Icons.SearchIcon />;
-  if (iconId === 'utility-2') return <Icons.AddIcon />;
-  if (iconId === 'utility-3') return <Icons.EditIcon />;
-  if (iconId === 'utility-4') return <Icons.TrashIcon />;
-  if (iconId === 'utility-5') return <Icons.CheckIcon />;
-  if (iconId === 'utility-6') return <Icons.CloseIcon />;
-  if (iconId === 'utility-7') return <Icons.InfoIcon />;
-  if (iconId === 'utility-8') return <Icons.LinkIcon />;
-  if (iconId === 'utility-9') return <Icons.SettingIcon />;
-  if (iconId === 'utility-10') return <Icons.FilterIcon />;
-  
-  // Media 아이콘
-  if (iconId === 'media-1') return <Icons.PlayIcon />;
-  if (iconId === 'media-2') return <Icons.PauseIcon />;
-  if (iconId === 'media-3') return <Icons.StopIcon />;
-  if (iconId === 'media-4') return <Icons.ArchiveIcon />;
-  if (iconId === 'media-5') return <Icons.HideTabIcon />;
-  if (iconId === 'media-6') return <Icons.HighlightIcon />;
-  if (iconId === 'media-7') return <Icons.SortIcon />;
-  if (iconId === 'media-8') return <Icons.ReorderIcon />;
-  if (iconId === 'media-9') return <Icons.OverflowIcon />;
-  if (iconId === 'media-10') return <Icons.ChevronRightIcon />;
-  
-  // Other 아이콘
-  if (iconId === 'other-1') return <Icons.TimeIcon />;
-  if (iconId === 'other-2') return <Icons.HourglassIcon />;
-  if (iconId === 'other-3') return <Icons.LightbulbIcon />;
-  if (iconId === 'other-4') return <Icons.TripleStarsIcon />;
-  if (iconId === 'other-5') return <Icons.BackIcon />;
-
-  return <Icons.InfoIcon />; // Default icon as fallback
 };
 
 export default OnSessionPage;
