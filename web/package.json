@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "build": "vite build --mode production",
+    "build:check": "tsc && vite build",
     "build:no-check": "vite build",
-    "build:skip-ts": "vite build --mode production"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@diggin/shared": "workspace:*",
