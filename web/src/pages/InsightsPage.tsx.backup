@@ -1,0 +1,606 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { getHole } from '@shared/services/holeService';
+import { getHoleSessions } from '@shared/services/sessionService';
+import { getSessionEntries, deleteTextEntry } from '@shared/services/textEntryService';
+import { getHighlights, addToHighlights, removeFromHighlights, clearHighlights } from '@shared/services/highlightService';
+import { Hole, Session, TextEntry } from '@shared/models/types';
+import { Button } from '../components/Button';
+import { SingleLineTextField } from '@shared/components/ui/textField/singleLine';
+import * as Icons from '@shared/icons';
+
+export default function InsightsPage() {
+  const { holeId } = useParams<{ holeId: string }>();
+  const { user, logOut } = useAuth();
+  const navigate = useNavigate();
+  
+  const [hole, setHole] = useState<Hole | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>('all');
+  const [entries, setEntries] = useState<TextEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [hidePageInfo, setHidePageInfo] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showHighlights, setShowHighlights] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  
+  // Load hole data
+  useEffect(() => {
+    if (!user || !holeId) return;
+    
+    const loadHoleData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Load hole details
+        const holeData = await getHole(holeId);
+        if (!holeData) {
+          setError('Hole not found');
+          return;
+        }
+        setHole(holeData);
+        
+        // Load sessions for this hole
+        const holeSessions = await getHoleSessions(holeId);
+        setSessions(holeSessions);
+        
+        // Load entries for all sessions by default
+        await loadEntriesForSessions(holeSessions.map(s => s.id));
+        
+        // Load saved highlights
+        const savedHighlights = await getHighlights(user.uid, holeId);
+        setSelectedEntries(savedHighlights);
+      } catch (err) {
+        console.error('Failed to load hole data:', err);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadHoleData();
+  }, [user, holeId]);
+  
+  // Load entries for selected session(s)
+  const loadEntriesForSessions = async (sessionIds: string[]) => {
+    if (sessionIds.length === 0) {
+      setEntries([]);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let allEntries: TextEntry[] = [];
+      
+      for (const sessionId of sessionIds) {
+        const { entries } = await getSessionEntries(sessionId, 100);
+        allEntries = [...allEntries, ...entries];
+      }
+      
+      // Sort by captured time, newest first
+      allEntries.sort((a, b) => {
+        const dateA = a.capturedAt?.toDate?.() || new Date(0);
+        const dateB = b.capturedAt?.toDate?.() || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setEntries(allEntries);
+    } catch (err) {
+      console.error('Failed to load entries:', err);
+      setError('Failed to load insights. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle session selection
+  const handleSessionChange = (sessionId: string) => {
+    setSelectedSession(sessionId);
+    
+    if (sessionId === 'all') {
+      loadEntriesForSessions(sessions.map(s => s.id));
+    } else {
+      loadEntriesForSessions([sessionId]);
+    }
+  };
+  
+  // Toggle entry selection for highlights with database persistence
+  const toggleEntrySelection = async (entryId: string) => {
+    if (!user || !holeId) return;
+    
+    try {
+      if (selectedEntries.includes(entryId)) {
+        // Remove from highlights
+        await removeFromHighlights(user.uid, holeId, entryId);
+        setSelectedEntries(selectedEntries.filter(id => id !== entryId));
+      } else {
+        // Add to highlights
+        await addToHighlights(user.uid, holeId, entryId);
+        setSelectedEntries([...selectedEntries, entryId]);
+      }
+    } catch (error) {
+      console.error('Failed to update highlights:', error);
+      // Show error to user (you could add a toast notification here)
+    }
+  };
+  
+  // Clear all highlights with database persistence
+  const handleClearHighlights = async () => {
+    if (!user || !holeId) return;
+    
+    try {
+      await clearHighlights(user.uid, holeId);
+      setSelectedEntries([]);
+    } catch (error) {
+      console.error('Failed to clear highlights:', error);
+      // Show error to user (you could add a toast notification here)
+    }
+  };
+  
+  // Handle entry deletion
+  const handleDeleteEntry = (entryId: string) => {
+    setEntryToDelete(entryId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!entryToDelete) return;
+    
+    try {
+      await deleteTextEntry(entryToDelete);
+      
+      // Remove from local state
+      setEntries(entries.filter(entry => entry.id !== entryToDelete));
+      
+      // Remove from highlights if it was highlighted
+      if (selectedEntries.includes(entryToDelete)) {
+        await removeFromHighlights(user!.uid, holeId!, entryToDelete);
+        setSelectedEntries(selectedEntries.filter(id => id !== entryToDelete));
+      }
+      
+      // Close modal
+      setShowDeleteModal(false);
+      setEntryToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+      // Show error to user (you could add a toast notification here)
+    }
+  };
+
+  const cancelDeleteEntry = () => {
+    setShowDeleteModal(false);
+    setEntryToDelete(null);
+  };
+  
+  // Format date helper
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date).replace(/\//g, '.').replace(',', '');
+  };
+
+  // Format session date for display
+  const formatSessionDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date).replace(/\//g, '.');
+  };
+
+  // Calculate total session time
+  const getTotalSessionTime = () => {
+    const totalSeconds = sessions.reduce((total, session) => {
+      return total + (session.totalDuration || 0);
+    }, 0);
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Extract domain from URL
+  const getDomain = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return domain.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+
+  // Group entries by source URL for display
+  const groupEntriesBySource = () => {
+    const filtered = entries.filter(entry => 
+      entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (entry.sourceUrl && getDomain(entry.sourceUrl).toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const groups: { [key: string]: TextEntry[] } = {};
+    filtered.forEach(entry => {
+      const key = entry.sourceUrl || 'Unknown Source';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(entry);
+    });
+    return groups;
+  };
+
+  if (loading && !hole) {
+    return (
+      <div className="w-full min-h-screen flex flex-col">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-gray-700">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="w-full min-h-screen flex flex-col">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-medium">{error}</div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/holes')}
+              className="mt-4"
+            >
+              Back to Holes
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const groupedEntries = groupEntriesBySource();
+
+  return (
+    <div className="w-full min-h-screen bg-white flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="w-full px-4 sm:px-6 bg-white border-b border-gray-200 flex flex-col justify-start items-center gap-2.5">
+        <div className="w-full py-3 inline-flex justify-between items-center">
+          {/* Left: Back button */}
+          <div className="flex justify-start items-center gap-2.5">
+            <div className="rounded flex justify-start items-center gap-2">
+              <div 
+                className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded"
+                onClick={() => navigate('/holes')}
+              >
+                <div className="w-5 h-5 relative overflow-hidden">
+                  <Icons.BackIcon />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Center: Hole info */}
+          <div className="hidden md:flex justify-start items-center gap-4 lg:gap-6">
+            <div className="flex justify-start items-center gap-4">
+              <div className="w-6 h-6 relative overflow-hidden">
+                <Icons.LightbulbIcon />
+              </div>
+              <div className="flex justify-start items-center gap-2">
+                <div className="text-center justify-center text-text-primary-light text-title-md leading-normal truncate max-w-32 lg:max-w-52">
+                  {hole?.name}
+                </div>
+                <div className="justify-center text-text-secondary-light text-body-lg-rg leading-snug">
+                  {entries.length}
+                </div>
+              </div>
+            </div>
+            <div className="hidden lg:flex justify-start items-center gap-2">
+              <div className="w-4 h-4 relative">
+                <Icons.HourglassIcon />
+              </div>
+              <div className="justify-center text-text-tertiary-light text-body-lg-rg leading-snug">
+                {getTotalSessionTime()}
+              </div>
+            </div>
+            <div className="hidden lg:flex justify-start items-center gap-2">
+              <div className="w-4 h-4 relative">
+                <Icons.TimeIcon />
+              </div>
+              <div className="justify-center text-text-tertiary-light text-body-lg-rg leading-snug">
+                {hole?.updatedAt ? formatSessionDate(hole.updatedAt) : ''}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: Hole name only */}
+          <div className="md:hidden flex-1 text-center">
+            <div className="text-text-primary-light text-title-md leading-normal truncate">
+              {hole?.name}
+            </div>
+          </div>
+
+          {/* Right: Log out */}
+          <div className="flex justify-start items-center gap-4 text-text-inverted-light text-body-md-rg">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                try {
+                  logOut();
+                } catch (error) {
+                  console.error('Logout failed:', error);
+                }
+              }}
+            >
+              Log out
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 w-full px-[100px] flex flex-col justify-start items-center gap-2.5 overflow-hidden">
+        <div className="w-full flex-1 max-w-[1520px] pt-10 flex flex-col desktop:flex-row justify-center items-start gap-6 desktop:gap-10 transition-all duration-300 ease-in-out">
+          {/* Left: Insights List */}
+          <div className="flex-1 w-full flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out max-w-none">
+            {/* Top Controls */}
+            <div className="w-full h-auto flex flex-col xl:flex-row xl:h-10 justify-between items-start xl:items-center gap-4 xl:gap-0">
+              <div className="flex justify-start items-center gap-2">
+                <div className="w-20 justify-start text-text-primary-light text-title-md leading-normal">Insights in</div>
+                <div className="h-9 px-3 rounded-lg flex justify-start items-center gap-3">
+                  <div className="justify-center text-text-primary-light text-title-md leading-normal">
+                    {selectedSession === 'all' ? 'All' : 
+                     sessions.find(s => s.id === selectedSession)?.name || 'Session'}
+                  </div>
+                  <div className="w-2 h-2 relative overflow-hidden">
+                    <Icons.ChevronRightIcon />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex flex-row justify-end items-start items-center gap-4 w-full">
+                {/* Search and filter */}
+                <div className="flex w-full flex-row justify-end items-center gap-2">
+                  <div className="flex w-full max-w-[300px] flex justify-end items-center gap-2 text-body-md-rg">
+                    <SingleLineTextField
+                      size="md"
+                      placeholder="Search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      isDisabled={false}
+                      error={false}
+                      className="flex-1 max-w-[300px]"
+                    />
+                  </div>
+                  <div>
+                  <Button
+                  variant="tertiary"
+                  size="md"
+                  isIconOnly
+                    showLeftIcon
+                    leftIcon={<Icons.FilterIcon />}
+                  >
+                  </Button>
+                  </div>
+                </div>
+                
+                {/* Hide page info checkbox */}
+                <div className="p-0.5 flex justify-start items-center gap-2 flex-shrink-0">
+                  <div className="w-4 h-4 flex justify-center items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={hidePageInfo}
+                      onChange={(e) => setHidePageInfo(e.target.checked)}
+                      className="w-4 h-4 rounded-sm border border-gray-300 checkbox-primary"
+                    />
+                  </div>
+                  <div className="justify-start text-text-primary-light text-body-md-rg leading-none whitespace-nowrap">Hide page info</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Insights Content */}
+            <div className="w-full flex-1 max-h-[600px] desktop:h-[696px] flex flex-col justify-start items-start gap-6 sm:gap-10 overflow-y-auto">
+              {loading && (
+                <div className="w-full flex justify-center items-center py-20">
+                  <div className="text-gray-700">Loading</div>
+                </div>
+              )}
+              
+              {!loading && entries.length === 0 && (
+                <div className="w-full flex flex-col justify-center items-center py-20">
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 bg-gray-200 rounded-full mb-5" />
+                  <div className="text-center text-text-secondary-light text-title-md">No insights yet</div>
+                </div>
+              )}
+
+              {!loading && Object.keys(groupedEntries).map((sourceUrl, index) => (
+                <div key={sourceUrl} className="w-full flex flex-col justify-start items-start gap-5">
+                  {/* Page Info Section */}
+                  {!hidePageInfo && (
+                    <div className="flex flex-col justify-start items-start gap-2">
+                      <div className="flex justify-start items-center gap-3 sm:gap-4">
+                        <img 
+                          className="w-16 h-8 sm:w-20 sm:h-10 rounded border border-gray-200 flex-shrink-0" 
+                          src={`https://www.google.com/s2/favicons?domain=${getDomain(sourceUrl)}&sz=64`}
+                          alt="Site favicon"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/80x40/f3f4f6/9ca3af?text=?';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0 inline-flex flex-col justify-start items-start gap-1">
+                          <div className="justify-center text-text-primary-light text-title-sm leading-snug truncate w-full truncate">
+                            {getDomain(sourceUrl)}
+                          </div>
+                          <div className="inline-flex justify-start items-start gap-1 text-text-tertiary-light text-caption-md-rg truncate">
+                            <div className="leading-none">
+                              {groupedEntries[sourceUrl][0]?.capturedAt ? formatDate(groupedEntries[sourceUrl][0].capturedAt) : ''}
+                            </div>
+                            <div className="text-center leading-none">·</div>
+                            <div className="leading-none truncate">
+                              {sessions.find(s => groupedEntries[sourceUrl].some(e => e.sessionId === s.id))?.name || 'Session'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insights for this source */}
+                  <div className="w-full flex flex-col justify-start items-start gap-3 sm:gap-5">
+                    {groupedEntries[sourceUrl].map((entry) => (
+                      <div 
+                        key={entry.id}
+                        className={`group relative w-full pl-3 pr-3 py-2 border-l-2 border-line-tertiary inline-flex justify-start items-center gap-2.5 cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors ${
+                          selectedEntries.includes(entry.id) ? 'border-line-tertiary bg-fill-hover-secondary-light' : ''
+                        }`}
+                        onClick={() => toggleEntrySelection(entry.id)}
+                      >
+                        <div className="flex-1 justify-center text-text-primary-light text-body-md-rg leading-snug truncate">
+                          {entry.content}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEntry(entry.id);
+                          }}
+                          className="absolute bottom-0 right-0 w-5 h-5 hover:bg-gray-100 flex justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <div className="w-3 h-3 relative overflow-hidden">
+                            <Icons.CloseIcon />
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Highlights Panel */}
+          <div className={`w-90 desktop:w-90 flex justify-center items-start gap-2.5 transition-all duration-300 ease-in-out ${
+            showHighlights 
+              ? 'translate-x-0 opacity-100' 
+              : 'desktop:translate-x-full desktop:opacity-0'
+          }`}>
+            <div className="flex-1 desktop:self-stretch desktop:min-h-[calc(100vh-160px)] p-4 sm:p-5 bg-gray-25 rounded-2xl inline-flex flex-col justify-start items-start gap-5">
+              {/* Highlights Header */}
+              <div className="w-80 h-10 pr-0.5 rounded-lg inline-flex justify-between items-center overflow-hidden">
+                <div className="flex justify-start items-center gap-2">
+                  <div className="w-[20px] h-[20px] relative">
+                    <Icons.HighlightIcon />
+                  </div>
+                  <div className="justify-center text-text-primary-light text-title-md leading-normal">Highlights</div>
+                </div>
+                <div className="rounded flex justify-start items-center gap-2">
+                  <Button
+                    variant="tertiary"
+                    size="md"
+                    isIconOnly
+                    leftIcon={<Icons.HideTabIcon />}
+                    showLeftIcon
+                    onClick={() => setShowHighlights(!showHighlights)}
+                  >
+                    <Icons.HideTabIcon />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Highlights Content */}
+              <div className="w-full flex-1 inline-flex justify-start items-start gap-1 overflow-hidden">
+                <div className="flex-1 inline-flex flex-col justify-between items-center gap-3 overflow-y-auto h-full max-h-full">
+                  {selectedEntries.length === 0 ? (
+                    <div className="w-full text-center text-text-secondary-light text-body-lg-rg">
+                      Click on insights <br /> to add them to highlights
+                    </div>
+                  ) : (
+                    entries
+                      .filter(entry => selectedEntries.includes(entry.id))
+                      .map(entry => (
+                        <div 
+                          key={entry.id}
+                          className="w-full pl-2 pr-5 py-1 inline-flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                          onClick={() => toggleEntrySelection(entry.id)}
+                        >
+                          <div className="flex-1 justify-center text-text-primary-light text-body-lg-rg leading-snug truncate">
+                            {entry.content}
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Highlights Toggle Button - appears when panel is hidden */}
+      {!showHighlights && (
+        <div className="fixed right-0 top-[120px] z-10">
+          <button
+            onClick={() => setShowHighlights(true)}
+            className="w-12 h-12 bg-white border-l border-t border-b border-gray-200 rounded-tl-2xl rounded-bl-2xl flex justify-center items-center hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <div className="w-5 h-5 relative">
+              <Icons.HighlightIcon />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="w-96 px-6 py-9 bg-white rounded-2xl border-t border-gray-200 flex flex-col justify-center items-center gap-6">
+            <div className="w-full flex flex-col justify-start items-center gap-3">
+              <div className="w-full text-center text-gray-950 text-lg font-medium leading-normal">
+                Delete the Insight?
+              </div>
+              <div className="w-full text-center text-gray-500 text-sm font-medium leading-none">
+                You will not be able to recover it,<br/>
+                but you can highlight more valuable insights.
+              </div>
+            </div>
+            <div className="flex justify-end items-center gap-3">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={cancelDeleteEntry}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={confirmDeleteEntry}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+} 
