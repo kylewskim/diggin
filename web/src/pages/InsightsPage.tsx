@@ -1,14 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getHole } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
-import { getSessionEntries } from '@shared/services/textEntryService';
+import { getSessionEntries, createTextEntry } from '@shared/services/textEntryService';
 import { getHighlights, addToHighlights, removeFromHighlights, clearHighlights } from '@shared/services/highlightService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
 import { Button } from '../components/Button';
 import { SingleLineTextField } from '@shared/components/ui/textField/singleLine';
 import * as Icons from '@shared/icons';
+
+// Chrome extension API type declarations
+declare global {
+  interface Window {
+    chrome?: {
+      runtime?: {
+        sendMessage: (message: any, callback?: (response: any) => void) => void;
+        lastError?: { message: string };
+      };
+    };
+  }
+}
 
 export default function InsightsPage() {
   const { holeId } = useParams<{ holeId: string }>();
@@ -26,36 +38,31 @@ export default function InsightsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showHighlights, setShowHighlights] = useState(true);
   
-  // Load hole data
+  // Load hole data on mount
   useEffect(() => {
-    if (!user || !holeId) return;
-    
     const loadHoleData = async () => {
+      if (!user || !holeId) return;
+      
       try {
         setLoading(true);
-        setError(null);
         
-        // Load hole details
+        // Load hole information
         const holeData = await getHole(holeId);
-        if (!holeData) {
-          setError('Hole not found');
-          return;
-        }
         setHole(holeData);
         
-        // Load sessions for this hole
-        const holeSessions = await getHoleSessions(holeId);
-        setSessions(holeSessions);
+        // Load sessions
+        const sessionsData = await getHoleSessions(holeId);
+        setSessions(sessionsData);
         
         // Load entries for all sessions by default
-        await loadEntriesForSessions(holeSessions.map(s => s.id));
+        await loadEntriesForSessions(sessionsData.map(s => s.id));
         
-        // Load saved highlights
+        // Load highlights
         const savedHighlights = await getHighlights(user.uid, holeId);
         setSelectedEntries(savedHighlights);
       } catch (err) {
         console.error('Failed to load hole data:', err);
-        setError('Failed to load data. Please try again.');
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
@@ -63,7 +70,7 @@ export default function InsightsPage() {
     
     loadHoleData();
   }, [user, holeId]);
-  
+
   // Load entries for selected session(s)
   const loadEntriesForSessions = async (sessionIds: string[]) => {
     if (sessionIds.length === 0) {
@@ -97,6 +104,123 @@ export default function InsightsPage() {
       setLoading(false);
     }
   };
+
+  // Process pending items from Chrome storage and send to Firebase
+  const processPendingItems = useCallback(async () => {
+    console.log('🔄 [DEBUG] Starting to process pending items...');
+    
+    // Check if Chrome extension API is available
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('🚫 [DEBUG] Chrome extension API not available');
+      return;
+    }
+    console.log('✅ [DEBUG] Chrome extension API is available');
+
+    try {
+      console.log('📤 [DEBUG] Sending GET_PENDING_ITEMS message to background');
+      const response = await new Promise<any>((resolve) => {
+        window.chrome!.runtime!.sendMessage(
+          { action: 'GET_PENDING_ITEMS' },
+          (response) => {
+            console.log('📥 [DEBUG] Received response from background:', response);
+            resolve(response);
+          }
+        );
+      });
+
+      if (!response?.success) {
+        console.log('❌ [DEBUG] Response not successful:', response);
+        return;
+      }
+
+      if (!response.pendingItems) {
+        console.log('📋 [DEBUG] No pendingItems in response');
+        return;
+      }
+
+      if (!response.pendingItems.length) {
+        console.log('📋 [DEBUG] pendingItems array is empty');
+        return;
+      }
+
+      console.log(`📋 [DEBUG] Found ${response.pendingItems.length} pending items to process`);
+      console.log('📋 [DEBUG] Pending items:', response.pendingItems);
+      
+      let successCount = 0;
+      let failCount = 0;
+
+      // Determine which session to use
+      const targetSessionId = selectedSession !== 'all' ? selectedSession : (sessions[0]?.id || 'default');
+      console.log(`🎯 [DEBUG] Target session ID: ${targetSessionId}`);
+
+      // Process each pending item
+      for (const item of response.pendingItems) {
+        try {
+          console.log(`⚙️ [DEBUG] Processing item: ${item.content.substring(0, 50)}...`);
+          console.log(`⚙️ [DEBUG] Item URL: ${item.url || 'No URL'}`);
+          
+          await createTextEntry(
+            targetSessionId,
+            item.content,
+            item.url || ''
+          );
+          
+          successCount++;
+          console.log(`✅ [DEBUG] Successfully processed item: ${item.content.substring(0, 30)}...`);
+        } catch (error) {
+          failCount++;
+          console.error(`❌ [DEBUG] Failed to process item: ${item.content.substring(0, 30)}...`, error);
+        }
+      }
+
+      console.log(`📊 [DEBUG] Processing complete: ${successCount} success, ${failCount} failed`);
+
+      // Clear pending items if all were processed successfully
+      if (failCount === 0) {
+        console.log('🧹 [DEBUG] Clearing pending items from storage...');
+        await new Promise<void>((resolve) => {
+          window.chrome!.runtime!.sendMessage(
+            { action: 'CLEAR_PENDING_ITEMS' },
+            (clearResponse: any) => {
+              console.log('🧹 [DEBUG] Clear response:', clearResponse);
+              if (clearResponse?.success) {
+                console.log('✅ [DEBUG] Pending items cleared from storage');
+              } else {
+                console.error('❌ [DEBUG] Failed to clear pending items:', clearResponse?.error);
+              }
+              resolve();
+            }
+          );
+        });
+
+        // Reload entries to show newly added items
+        if (sessions.length > 0) {
+          console.log('🔄 [DEBUG] Reloading entries...');
+          if (selectedSession === 'all') {
+            await loadEntriesForSessions(sessions.map(s => s.id));
+          } else {
+            await loadEntriesForSessions([selectedSession]);
+          }
+          console.log('✅ [DEBUG] Entries reloaded');
+        }
+      }
+    } catch (error) {
+      console.error('💥 [DEBUG] Error processing pending items:', error);
+    }
+  }, [user, selectedSession, sessions, loadEntriesForSessions]);
+
+  // Auto-process pending items when component mounts and data is loaded
+  useEffect(() => {
+    console.log('🔍 [DEBUG] useEffect for processPendingItems triggered');
+    console.log('🔍 [DEBUG] Conditions - user:', !!user, 'sessions.length:', sessions.length, 'loading:', loading);
+    
+    if (user && sessions.length > 0 && !loading) {
+      console.log('✅ [DEBUG] All conditions met, calling processPendingItems');
+      processPendingItems();
+    } else {
+      console.log('❌ [DEBUG] Conditions not met for processPendingItems');
+    }
+  }, [user, sessions, loading, processPendingItems]);
   
   // Handle session selection
   const handleSessionChange = (sessionId: string) => {
@@ -321,10 +445,10 @@ export default function InsightsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 w-full px-4 sm:px-6 lg:px-24 flex flex-col justify-start items-center gap-2.5 overflow-hidden">
+      <div className="flex-1 w-ful h-full max-h-[calc(100vh-120px)] px-4 sm:px-6 lg:px-24 flex flex-col justify-start items-center gap-2.5 overflow-hidden">
         <div className="w-full flex-1 max-w-[1520px] py-6 sm:py-10 flex flex-col xl:flex-row justify-center items-start gap-6 xl:gap-10 transition-all duration-300 ease-in-out">
           {/* Left: Insights List */}
-          <div className={`flex-1 w-full px-1 sm:px-3 flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out ${
+          <div className={`flex-1 w-full h-[calc(100vh-160px)] flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out ${
             showHighlights ? 'max-w-[1280px]' : 'max-w-none'
           }`}>
             {/* Top Controls */}
@@ -355,13 +479,13 @@ export default function InsightsPage() {
                       error={false}
                       className="flex-1"
                     />
-                    <div className="rounded flex justify-start items-center gap-2">
+                    {/* <div className="rounded flex justify-start items-center gap-2">
                       <div className="w-9 h-9 flex justify-center items-center gap-2.5">
                         <div className="w-5 h-5 relative overflow-hidden">
                           <Icons.SearchIcon />
                         </div>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
                   <div className="rounded flex justify-start items-center gap-2">
                     <div className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded">
@@ -382,13 +506,13 @@ export default function InsightsPage() {
                       className="w-4 h-4 rounded-sm border border-gray-300"
                     />
                   </div>
-                  <div className="justify-start text-text-primary-light text-body-md-rg leading-none">Hide page info</div>
+                  <div className="justify-start w-[90px] text-text-primary-light text-body-md-rg leading-none">Hide page info</div>
                 </div>
               </div>
             </div>
 
             {/* Insights Content */}
-            <div className="w-full flex-1 max-h-[600px] xl:h-[696px] flex flex-col justify-start items-start gap-6 sm:gap-10 overflow-y-auto">
+            <div className="w-full flex-1 h-full flex flex-col justify-start items-start gap-6 sm:gap-10 overflow-y-auto pr-3.5">
               {loading && (
                 <div className="w-full flex justify-center items-center py-20">
                   <div className="text-gray-700">Loading insights...</div>
@@ -409,11 +533,12 @@ export default function InsightsPage() {
                     <div className="flex flex-col justify-start items-start gap-2">
                       <div className="flex justify-start items-center gap-3 sm:gap-4">
                         <img 
-                          className="w-16 h-8 sm:w-20 sm:h-10 rounded border border-gray-200 flex-shrink-0" 
-                          src={`https://www.google.com/s2/favicons?domain=${getDomain(sourceUrl)}&sz=64`}
-                          alt="Site favicon"
+                          className="w-16 h-8 sm:w-20 sm:h-10 rounded border border-gray-200 flex-shrink-0 object-cover" 
+                          src={`https://api.urlbox.io/v1/qyfxZOkLVtHTYZlw/png?url=${encodeURIComponent(sourceUrl)}&width=320&height=160&delay=1000`}
+                          alt="Site thumbnail"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/80x40/f3f4f6/9ca3af?text=?';
+                            // 썸네일 실패 시 favicon으로 fallback
+                            (e.target as HTMLImageElement).src = `https://www.google.com/s2/favicons?domain=${getDomain(sourceUrl)}&sz=64`;
                           }}
                         />
                         <div className="flex-1 min-w-0 inline-flex flex-col justify-start items-start gap-0.5">
@@ -456,12 +581,12 @@ export default function InsightsPage() {
           </div>
 
           {/* Right: Highlights Panel */}
-          <div className={`w-full xl:w-96 flex justify-center items-start gap-2.5 transition-all duration-300 ease-in-out ${
+          <div className={`w-full h-full xl:w-96 flex justify-center items-start gap-2.5 transition-all duration-300 ease-in-out ${
             showHighlights 
               ? 'translate-x-0 opacity-100' 
               : 'xl:translate-x-full xl:opacity-0 xl:w-0 xl:overflow-hidden hidden xl:flex'
           }`}>
-            <div className="flex-1 xl:self-stretch p-4 sm:p-5 bg-gray-25 rounded-2xl inline-flex flex-col justify-start items-start gap-5">
+            <div className="flex-1 h-full xl:self-stretch p-4 sm:p-5 bg-gray-25 rounded-2xl inline-flex flex-col justify-start items-start gap-5">
               {/* Highlights Header */}
               <div className="w-full h-12 pr-0.5 rounded-lg inline-flex justify-between items-center overflow-hidden">
                 <div className="flex justify-start items-center gap-2">
