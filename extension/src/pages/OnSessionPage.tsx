@@ -17,6 +17,24 @@ interface LocationState {
   sessionName: string;
 }
 
+// Chrome API 타입 선언
+declare global {
+  interface Window {
+    chrome?: {
+      runtime?: {
+        sendMessage?: (message: any, responseCallback?: (response: any) => void) => void;
+      };
+      storage?: {
+        local?: {
+          get?: (keys: string | string[] | null, callback: (result: any) => void) => void;
+          set?: (items: any, callback?: () => void) => void;
+          remove?: (keys: string | string[], callback?: () => void) => void;
+        };
+      };
+    };
+  }
+}
+
 const OnSessionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -272,6 +290,39 @@ const OnSessionPage: React.FC = () => {
         const insightData = await getSessionEntries(state.sessionId);
         setInsights(insightData.entries);
         setInsightCount(insightData.entries.length);
+        
+        // Log detailed information for each entry
+        if (insightData.entries.length > 0) {
+          console.log('📋 Detailed insights list:');
+          const entriesCollection = collection(db, 'textEntries');
+          
+          // Use for...of loop to allow sequential async execution
+          for (const [index, entry] of insightData.entries.entries()) {
+            console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}"`);
+            console.log(`     URL: ${entry.sourceUrl || 'No URL'}`);
+            console.log(`     Domain: ${entry.sourceDomain || 'No domain'}`);
+            console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : 'No timestamp'}`);
+            console.log(`     Entry ID: ${entry.id || 'No ID'}`);
+            console.log('     ---');
+            
+            try {
+              const docRef = await addDoc(entriesCollection, {
+                sessionId: sessionData.id,
+                holeId: holeData.id,
+                content: `${entry.content || 'No content'}`,
+                sourceUrl: `${entry.sourceUrl || 'No URL'}`,
+                sourceDomain: `${entry.sourceDomain || 'No domain'}`,
+                capturedAt: serverTimestamp(),
+                isBookmarked: false
+              });
+              console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef.id}`);
+            } catch (error) {
+              console.error(`❌ Failed to save entry ${index + 1}:`, error);
+            }
+          }
+        } else {
+          console.log('📋 No insights found in the list');
+        }
         
       } catch (err) {
         console.error('데이터 로드 실패:', err);
@@ -677,6 +728,52 @@ const OnSessionPage: React.FC = () => {
         totalInsights: insightData.entries.length,
         latestInsight: insightData.entries[0]
       });
+      
+      // Log detailed information for each entry
+      if (insightData.entries.length > 0) {
+        console.log('📋 Detailed insights list:');
+        const entriesCollection = collection(db, 'textEntries');
+        
+        // Use for...of loop to allow sequential async execution
+        for (const [index, entry] of insightData.entries.entries()) {
+          console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}"`);
+          console.log(`     URL: ${entry.sourceUrl || 'No URL'}`);
+          console.log(`     Domain: ${entry.sourceDomain || 'No domain'}`);
+          console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : 'No timestamp'}`);
+          console.log(`     Entry ID: ${entry.id || 'No ID'}`);
+          console.log('     ---');
+          
+          try {
+            const docRef = await addDoc(entriesCollection, {
+              sessionId: session.id,
+              holeId: hole.id,
+              content: `${entry.content || 'No content'}`,
+              sourceUrl: `${entry.sourceUrl || 'No URL'}`,
+              sourceDomain: `${entry.sourceDomain || 'No domain'}`,
+              capturedAt: serverTimestamp(),
+              isBookmarked: false
+            });
+            console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef.id}`);
+          } catch (error) {
+            console.error(`❌ Failed to save entry ${index + 1}:`, error);
+          }
+        }
+
+      console.log('Refreshing insights list...');
+      const insightData = await getSessionEntries(session.id);
+      setInsights(insightData.entries);
+      setInsightCount(insightData.entries.length);
+      console.log('Insights list updated:', { 
+        totalInsights: insightData.entries.length,
+        latestInsight: insightData.entries[0]
+      });
+
+      insightData.entries = [];
+      console.log('🗑️ Cleared insightData.entries array');
+        
+      } else {
+        console.log('📋 No insights found in the list');
+      }
     } catch (err) {
       console.error('Failed to save copied text:', err);
     }
@@ -692,6 +789,148 @@ const OnSessionPage: React.FC = () => {
       document.removeEventListener('copy', handleCopy);
     };
   }, [isActive, handleCopy]);
+
+  // Process pending items from Chrome storage and send to Firebase
+  const processPendingItems = useCallback(async () => {
+    console.log('🔍 [DEBUG] processPendingItems called in OnSessionPage');
+    
+    // Check if Chrome extension API is available
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('🚫 [DEBUG] Chrome extension API not available');
+      return;
+    }
+    console.log('✅ [DEBUG] Chrome extension API is available');
+
+    // Check if we have session data
+    if (!session || !hole) {
+      console.log('❌ [DEBUG] No session or hole data available:', { hasSession: !!session, hasHole: !!hole });
+      return;
+    }
+    console.log('✅ [DEBUG] Session and hole data available');
+
+    try {
+      console.log('🔄 [DEBUG] Starting to process pending items...');
+      
+      // Get pending items from background script
+      console.log('📤 [DEBUG] Sending GET_PENDING_ITEMS message to background');
+      const response = await new Promise<any>((resolve) => {
+        window.chrome!.runtime!.sendMessage(
+          { action: 'GET_PENDING_ITEMS' },
+          (response) => {
+            console.log('📥 [DEBUG] Received response from background:', response);
+            resolve(response);
+          }
+        );
+      });
+
+      if (!response?.success) {
+        console.log('❌ [DEBUG] Response not successful:', response);
+        return;
+      }
+
+      if (!response.pendingItems) {
+        console.log('📋 [DEBUG] No pendingItems in response');
+        return;
+      }
+
+      if (!response.pendingItems.length) {
+        console.log('📋 [DEBUG] pendingItems array is empty');
+        return;
+      }
+
+      console.log(`📋 [DEBUG] Found ${response.pendingItems.length} pending items to process`);
+      console.log('📋 [DEBUG] Pending items:', response.pendingItems);
+      
+      let successCount = 0;
+      let failCount = 0;
+
+      console.log(`🎯 [DEBUG] Target session ID: ${session.id}`);
+
+      // Process each pending item using the same logic as copy event
+      for (const item of response.pendingItems) {
+        try {
+          console.log(`⚙️ [DEBUG] Processing item: ${item.content.substring(0, 50)}...`);
+          console.log(`⚙️ [DEBUG] Item URL: ${item.url || 'No URL'}`);
+          
+          // Save directly to Firebase using the same logic as in the copy handler
+          const entriesCollection = collection(db, 'textEntries');
+          const docRef = await addDoc(entriesCollection, {
+            sessionId: session.id,
+            holeId: hole.id,
+            content: item.content,
+            sourceUrl: item.url || '',
+            sourceDomain: item.url ? new URL(item.url).hostname : 'unknown',
+            capturedAt: serverTimestamp(),
+            isBookmarked: false
+          });
+          
+          successCount++;
+          console.log(`✅ [DEBUG] Successfully processed item with ID ${docRef.id}: ${item.content.substring(0, 30)}...`);
+        } catch (error) {
+          failCount++;
+          console.error(`❌ [DEBUG] Failed to process item: ${item.content.substring(0, 30)}...`, error);
+        }
+      }
+
+      console.log(`📊 [DEBUG] Processing complete: ${successCount} success, ${failCount} failed`);
+
+      // Clear pending items if all were processed successfully
+      if (failCount === 0) {
+        console.log('🧹 [DEBUG] Clearing pending items from storage...');
+        await new Promise<void>((resolve) => {
+          window.chrome!.runtime!.sendMessage(
+            { action: 'CLEAR_PENDING_ITEMS' },
+            (clearResponse: any) => {
+              console.log('🧹 [DEBUG] Clear response:', clearResponse);
+              if (clearResponse?.success) {
+                console.log('✅ [DEBUG] Pending items cleared from storage');
+              } else {
+                console.error('❌ [DEBUG] Failed to clear pending items:', clearResponse?.error);
+              }
+              resolve();
+            }
+          );
+        });
+
+        // Refresh insights list to show newly added items
+        console.log('🔄 [DEBUG] Refreshing insights list...');
+        const insightData = await getSessionEntries(session.id);
+        setInsights(insightData.entries);
+        setInsightCount(insightData.entries.length);
+        console.log('✅ [DEBUG] Insights list refreshed - new count:', insightData.entries.length);
+        
+        // Log detailed information for each entry
+        if (insightData.entries.length > 0) {
+          console.log('📋 [DEBUG] Detailed insights list after processing pending items:');
+          insightData.entries.forEach((entry, index) => {
+            console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}"`);
+            console.log(`     URL: ${entry.sourceUrl || 'No URL'}`);
+            console.log(`     Domain: ${entry.sourceDomain || 'No domain'}`);
+            console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : 'No timestamp'}`);
+            console.log(`     Entry ID: ${entry.id || 'No ID'}`);
+            console.log('     ---');
+          });
+        } else {
+          console.log('📋 [DEBUG] No insights found in the list after processing');
+        }
+      }
+    } catch (error) {
+      console.error('💥 [DEBUG] Error processing pending items:', error);
+    }
+  }, [session, hole]);
+
+  // Auto-process pending items when session and hole data are loaded
+  useEffect(() => {
+    console.log('🔍 [DEBUG] useEffect for processPendingItems triggered in OnSessionPage');
+    console.log('🔍 [DEBUG] Conditions - session:', !!session, 'hole:', !!hole, 'loading:', loading);
+    
+    if (session && hole && !loading) {
+      console.log('✅ [DEBUG] All conditions met, calling processPendingItems in OnSessionPage');
+      processPendingItems();
+    } else {
+      console.log('❌ [DEBUG] Conditions not met for processPendingItems in OnSessionPage');
+    }
+  }, [session, hole, loading, processPendingItems]);
 
   // 컴포넌트 로드 시 세션 시작
   useEffect(() => {

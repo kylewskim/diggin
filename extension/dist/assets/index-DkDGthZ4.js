@@ -57,7 +57,7 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 var require_index_001 = __commonJS({
-  "assets/index-CDTVZhi1.js"(exports) {
+  "assets/index-DkDGthZ4.js"(exports) {
     function _mergeNamespaces(n2, m2) {
       for (var i = 0; i < m2.length; i++) {
         const e = m2[i];
@@ -7625,7 +7625,7 @@ var require_index_001 = __commonJS({
     const validRequestMethodsArr = ["get", ...validMutationMethodsArr];
     new Set(validRequestMethodsArr);
     /**
-     * React Router v6.30.0
+     * React Router v6.30.1
      *
      * Copyright (c) Remix Software Inc.
      *
@@ -7719,8 +7719,7 @@ var require_index_001 = __commonJS({
     function useRoutesImpl(routes, locationArg, dataRouterState, future) {
       !useInRouterContext() ? invariant(false) : void 0;
       let {
-        navigator: navigator2,
-        static: isStatic
+        navigator: navigator2
       } = reactExports.useContext(NavigationContext);
       let {
         matches: parentMatches
@@ -43457,6 +43456,34 @@ This typically indicates that your device does not have a healthy Internet conne
             const insightData = yield getSessionEntries(state.sessionId);
             setInsights(insightData.entries);
             setInsightCount(insightData.entries.length);
+            if (insightData.entries.length > 0) {
+              console.log("📋 Detailed insights list:");
+              const entriesCollection = collection(db, "textEntries");
+              for (const [index, entry] of insightData.entries.entries()) {
+                console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"`);
+                console.log(`     URL: ${entry.sourceUrl || "No URL"}`);
+                console.log(`     Domain: ${entry.sourceDomain || "No domain"}`);
+                console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : "No timestamp"}`);
+                console.log(`     Entry ID: ${entry.id || "No ID"}`);
+                console.log("     ---");
+                try {
+                  const docRef = yield addDoc(entriesCollection, {
+                    sessionId: sessionData.id,
+                    holeId: holeData.id,
+                    content: `${entry.content || "No content"}`,
+                    sourceUrl: `${entry.sourceUrl || "No URL"}`,
+                    sourceDomain: `${entry.sourceDomain || "No domain"}`,
+                    capturedAt: serverTimestamp(),
+                    isBookmarked: false
+                  });
+                  console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef.id}`);
+                } catch (error22) {
+                  console.error(`❌ Failed to save entry ${index + 1}:`, error22);
+                }
+              }
+            } else {
+              console.log("📋 No insights found in the list");
+            }
           } catch (err) {
             console.error("데이터 로드 실패:", err);
             setError("세션 정보를 불러오는데 실패했습니다.");
@@ -43756,6 +43783,44 @@ This typically indicates that your device does not have a healthy Internet conne
             totalInsights: insightData.entries.length,
             latestInsight: insightData.entries[0]
           });
+          if (insightData.entries.length > 0) {
+            console.log("📋 Detailed insights list:");
+            const entriesCollection2 = collection(db, "textEntries");
+            for (const [index, entry] of insightData2.entries.entries()) {
+              console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"`);
+              console.log(`     URL: ${entry.sourceUrl || "No URL"}`);
+              console.log(`     Domain: ${entry.sourceDomain || "No domain"}`);
+              console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : "No timestamp"}`);
+              console.log(`     Entry ID: ${entry.id || "No ID"}`);
+              console.log("     ---");
+              try {
+                const docRef2 = yield addDoc(entriesCollection2, {
+                  sessionId: session.id,
+                  holeId: hole.id,
+                  content: `${entry.content || "No content"}`,
+                  sourceUrl: `${entry.sourceUrl || "No URL"}`,
+                  sourceDomain: `${entry.sourceDomain || "No domain"}`,
+                  capturedAt: serverTimestamp(),
+                  isBookmarked: false
+                });
+                console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef2.id}`);
+              } catch (error22) {
+                console.error(`❌ Failed to save entry ${index + 1}:`, error22);
+              }
+            }
+            console.log("Refreshing insights list...");
+            const insightData2 = yield getSessionEntries(session.id);
+            setInsights(insightData2.entries);
+            setInsightCount(insightData2.entries.length);
+            console.log("Insights list updated:", {
+              totalInsights: insightData2.entries.length,
+              latestInsight: insightData2.entries[0]
+            });
+            insightData2.entries = [];
+            console.log("🗑️ Cleared insightData.entries array");
+          } else {
+            console.log("📋 No insights found in the list");
+          }
         } catch (err) {
           console.error("Failed to save copied text:", err);
         }
@@ -43768,6 +43833,119 @@ This typically indicates that your device does not have a healthy Internet conne
           document.removeEventListener("copy", handleCopy);
         };
       }, [isActive, handleCopy]);
+      const processPendingItems = reactExports.useCallback(() => __async(exports, null, function* () {
+        var _a, _b;
+        console.log("🔍 [DEBUG] processPendingItems called in OnSessionPage");
+        if (!((_b = (_a = window.chrome) == null ? void 0 : _a.runtime) == null ? void 0 : _b.sendMessage)) {
+          console.log("🚫 [DEBUG] Chrome extension API not available");
+          return;
+        }
+        console.log("✅ [DEBUG] Chrome extension API is available");
+        if (!session || !hole) {
+          console.log("❌ [DEBUG] No session or hole data available:", { hasSession: !!session, hasHole: !!hole });
+          return;
+        }
+        console.log("✅ [DEBUG] Session and hole data available");
+        try {
+          console.log("🔄 [DEBUG] Starting to process pending items...");
+          console.log("📤 [DEBUG] Sending GET_PENDING_ITEMS message to background");
+          const response = yield new Promise((resolve) => {
+            window.chrome.runtime.sendMessage(
+              { action: "GET_PENDING_ITEMS" },
+              (response2) => {
+                console.log("📥 [DEBUG] Received response from background:", response2);
+                resolve(response2);
+              }
+            );
+          });
+          if (!(response == null ? void 0 : response.success)) {
+            console.log("❌ [DEBUG] Response not successful:", response);
+            return;
+          }
+          if (!response.pendingItems) {
+            console.log("📋 [DEBUG] No pendingItems in response");
+            return;
+          }
+          if (!response.pendingItems.length) {
+            console.log("📋 [DEBUG] pendingItems array is empty");
+            return;
+          }
+          console.log(`📋 [DEBUG] Found ${response.pendingItems.length} pending items to process`);
+          console.log("📋 [DEBUG] Pending items:", response.pendingItems);
+          let successCount = 0;
+          let failCount = 0;
+          console.log(`🎯 [DEBUG] Target session ID: ${session.id}`);
+          for (const item of response.pendingItems) {
+            try {
+              console.log(`⚙️ [DEBUG] Processing item: ${item.content.substring(0, 50)}...`);
+              console.log(`⚙️ [DEBUG] Item URL: ${item.url || "No URL"}`);
+              const entriesCollection = collection(db, "textEntries");
+              const docRef = yield addDoc(entriesCollection, {
+                sessionId: session.id,
+                holeId: hole.id,
+                content: item.content,
+                sourceUrl: item.url || "",
+                sourceDomain: item.url ? new URL(item.url).hostname : "unknown",
+                capturedAt: serverTimestamp(),
+                isBookmarked: false
+              });
+              successCount++;
+              console.log(`✅ [DEBUG] Successfully processed item with ID ${docRef.id}: ${item.content.substring(0, 30)}...`);
+            } catch (error22) {
+              failCount++;
+              console.error(`❌ [DEBUG] Failed to process item: ${item.content.substring(0, 30)}...`, error22);
+            }
+          }
+          console.log(`📊 [DEBUG] Processing complete: ${successCount} success, ${failCount} failed`);
+          if (failCount === 0) {
+            console.log("🧹 [DEBUG] Clearing pending items from storage...");
+            yield new Promise((resolve) => {
+              window.chrome.runtime.sendMessage(
+                { action: "CLEAR_PENDING_ITEMS" },
+                (clearResponse) => {
+                  console.log("🧹 [DEBUG] Clear response:", clearResponse);
+                  if (clearResponse == null ? void 0 : clearResponse.success) {
+                    console.log("✅ [DEBUG] Pending items cleared from storage");
+                  } else {
+                    console.error("❌ [DEBUG] Failed to clear pending items:", clearResponse == null ? void 0 : clearResponse.error);
+                  }
+                  resolve();
+                }
+              );
+            });
+            console.log("🔄 [DEBUG] Refreshing insights list...");
+            const insightData = yield getSessionEntries(session.id);
+            setInsights(insightData.entries);
+            setInsightCount(insightData.entries.length);
+            console.log("✅ [DEBUG] Insights list refreshed - new count:", insightData.entries.length);
+            if (insightData.entries.length > 0) {
+              console.log("📋 [DEBUG] Detailed insights list after processing pending items:");
+              insightData.entries.forEach((entry, index) => {
+                console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"`);
+                console.log(`     URL: ${entry.sourceUrl || "No URL"}`);
+                console.log(`     Domain: ${entry.sourceDomain || "No domain"}`);
+                console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : "No timestamp"}`);
+                console.log(`     Entry ID: ${entry.id || "No ID"}`);
+                console.log("     ---");
+              });
+            } else {
+              console.log("📋 [DEBUG] No insights found in the list after processing");
+            }
+          }
+        } catch (error22) {
+          console.error("💥 [DEBUG] Error processing pending items:", error22);
+        }
+      }), [session, hole]);
+      reactExports.useEffect(() => {
+        console.log("🔍 [DEBUG] useEffect for processPendingItems triggered in OnSessionPage");
+        console.log("🔍 [DEBUG] Conditions - session:", !!session, "hole:", !!hole, "loading:", loading);
+        if (session && hole && !loading) {
+          console.log("✅ [DEBUG] All conditions met, calling processPendingItems in OnSessionPage");
+          processPendingItems();
+        } else {
+          console.log("❌ [DEBUG] Conditions not met for processPendingItems in OnSessionPage");
+        }
+      }, [session, hole, loading, processPendingItems]);
       reactExports.useEffect(() => {
         console.log("[DIGGIN] OnSessionPage: Component mounted");
         function initSession() {

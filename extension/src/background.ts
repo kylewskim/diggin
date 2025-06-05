@@ -38,10 +38,104 @@ interface SessionData {
 const session: {
   isActive: boolean;
   data: SessionData | null;
+  timer?: {
+    intervalId?: number;
+    isRunning: boolean;
+    startTime?: number;
+    pausedTime?: number;
+  };
 } = {
   isActive: false,
-  data: null
+  data: null,
+  timer: {
+    isRunning: false
+  }
 };
+
+// Session Timer Management
+function startSessionTimer(): void {
+  if (!session.data || session.timer?.isRunning) {
+    console.log('[DIGGIN] Background: Timer already running or no session data');
+    return;
+  }
+
+  console.log('[DIGGIN] Background: Starting session timer');
+  
+  session.timer = {
+    isRunning: true,
+    startTime: Date.now() - ((session.data.elapsedTimeInSeconds || 0) * 1000),
+    pausedTime: 0
+  };
+
+  session.timer.intervalId = setInterval(() => {
+    if (!session.data || !session.timer?.isRunning || !session.timer.startTime) {
+      return;
+    }
+
+    const currentElapsed = Math.floor((Date.now() - session.timer.startTime) / 1000);
+    session.data.elapsedTimeInSeconds = currentElapsed;
+    session.data.lastUpdated = Date.now();
+
+    // Save to storage every 5 seconds
+    if (currentElapsed % 5 === 0) {
+      safeStorageSet('activeSession', session.data).catch(error => {
+        console.error('[DIGGIN] Background: Failed to save session during timer:', error);
+      });
+    }
+
+    console.log('[DIGGIN] Background: Session timer tick - elapsed:', currentElapsed, 'seconds');
+  }, 1000);
+
+  console.log('[DIGGIN] Background: Session timer started with interval ID:', session.timer.intervalId);
+}
+
+function pauseSessionTimer(): void {
+  if (!session.timer?.isRunning || !session.timer.intervalId) {
+    console.log('[DIGGIN] Background: Timer not running, cannot pause');
+    return;
+  }
+
+  console.log('[DIGGIN] Background: Pausing session timer');
+  
+  clearInterval(session.timer.intervalId);
+  session.timer.isRunning = false;
+  session.timer.pausedTime = Date.now();
+  
+  // Save current state
+  if (session.data) {
+    safeStorageSet('activeSession', session.data).catch(error => {
+      console.error('[DIGGIN] Background: Failed to save session during pause:', error);
+    });
+  }
+}
+
+function resumeSessionTimer(): void {
+  if (session.timer?.isRunning) {
+    console.log('[DIGGIN] Background: Timer already running, cannot resume');
+    return;
+  }
+
+  if (!session.data) {
+    console.log('[DIGGIN] Background: No session data to resume timer');
+    return;
+  }
+
+  console.log('[DIGGIN] Background: Resuming session timer');
+  startSessionTimer();
+}
+
+function stopSessionTimer(): void {
+  if (session.timer?.intervalId) {
+    console.log('[DIGGIN] Background: Stopping session timer');
+    clearInterval(session.timer.intervalId);
+  }
+  
+  session.timer = {
+    isRunning: false
+  };
+  
+  console.log('[DIGGIN] Background: Session timer stopped');
+}
 
 // Extension context validation
 function isExtensionContextValid(): boolean {
@@ -353,6 +447,9 @@ function startSession(userId: string): void {
   
   session.isActive = true;
   
+  // Start the session timer
+  startSessionTimer();
+  
   // Save session to storage
   safeStorageSet('activeSession', session.data).catch(error => {
     console.error('[DIGGIN] Background: Error saving session:', error);
@@ -462,7 +559,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           pendingEntries.push(pendingEntry);
           return safeStorageSet('pendingCopiedItems', pendingEntries);
         }).then(() => {
-          console.log('[DIGGIN] Background: Saved to pending items');
+          console.log('✅ Saved to pending items');
+          
+          // Print current pending items list
+          safeStorageGet('pendingCopiedItems').then(items => {
+            console.log('📋 Current pending items list:');
+            if (!items || items.length === 0) {
+              console.log('   (No items)');
+            } else {
+              items.forEach((item: PendingCopiedItem, index: number) => {
+                console.log(`   ${index + 1}. ${item.content.substring(0, 50)}... (${new Date(item.timestamp).toLocaleTimeString()})`);
+              });
+              console.log(`   Total: ${items.length} items`);
+            }
+          }).catch(error => {
+            console.error('Failed to get pending items for display:', error);
+          });
         }).catch(error => {
           console.error('[DIGGIN] Background: Failed to save to pending:', error);
         });
@@ -485,7 +597,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           pendingEntries.push(pendingEntry);
           return safeStorageSet('pendingCopiedItems', pendingEntries);
         }).then(() => {
-          console.log('[DIGGIN] Background: Saved to pending items (no session)');
+          console.log('✅ Saved to pending items (no session)');
+          
+          // Print current pending items list
+          safeStorageGet('pendingCopiedItems').then(items => {
+            console.log('📋 Current pending items list:');
+            if (!items || items.length === 0) {
+              console.log('   (No items)');
+            } else {
+              items.forEach((item: PendingCopiedItem, index: number) => {
+                console.log(`   ${index + 1}. ${item.content.substring(0, 50)}... (${new Date(item.timestamp).toLocaleTimeString()})`);
+              });
+              console.log(`   Total: ${items.length} items`);
+            }
+          }).catch(error => {
+            console.error('Failed to get pending items for display:', error);
+          });
         }).catch(error => {
           console.error('[DIGGIN] Background: Failed to save to pending:', error);
         });
@@ -545,6 +672,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           lastUpdated: Date.now()
         };
         
+        // Start the session timer
+        startSessionTimer();
+        
         safeStorageSet('activeSession', session.data).then(() => {
           console.log('[DIGGIN] Background: Session started and saved');
           sendResponse({ success: true, sessionData: session.data });
@@ -564,6 +694,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       
       if (session.data) {
         const finalDuration = session.data.elapsedTimeInSeconds;
+        
+        // Stop the timer
+        stopSessionTimer();
+        
         session.isActive = false;
         const endedSession = { ...session.data };
         session.data = null;
@@ -576,6 +710,49 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
       } else {
         sendResponse({ success: false, error: 'No active session' });
+      }
+      
+      return true;
+    }
+
+    if (message.action === 'PAUSE_SESSION') {
+      console.log('[DIGGIN] Background: Pausing session');
+      
+      if (session.data && session.isActive) {
+        pauseSessionTimer();
+        
+        // Save current state
+        safeStorageSet('activeSession', session.data).then(() => {
+          console.log('[DIGGIN] Background: Session paused');
+          sendResponse({ success: true, sessionData: session.data });
+        }).catch(error => {
+          console.error('[DIGGIN] Background: Failed to save paused session:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      } else {
+        sendResponse({ success: false, error: 'No active session to pause' });
+      }
+      
+      return true;
+    }
+
+    if (message.action === 'RESUME_SESSION') {
+      console.log('[DIGGIN] Background: Resuming session');
+      
+      if (session.data) {
+        session.isActive = true;
+        resumeSessionTimer();
+        
+        // Save current state
+        safeStorageSet('activeSession', session.data).then(() => {
+          console.log('[DIGGIN] Background: Session resumed');
+          sendResponse({ success: true, sessionData: session.data });
+        }).catch(error => {
+          console.error('[DIGGIN] Background: Failed to save resumed session:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      } else {
+        sendResponse({ success: false, error: 'No session to resume' });
       }
       
       return true;
@@ -652,6 +829,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       
       try {
         if (session.isActive && session.data) {
+          // Ensure timer is running
+          if (!session.timer?.isRunning) {
+            console.log('[DIGGIN] Background: Timer not running, restarting timer');
+            startSessionTimer();
+          }
+          
           // Update session timestamp
           session.data.lastUpdated = Date.now();
           safeStorageSet('activeSession', session.data)
@@ -716,7 +899,49 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       
       return true;
     }
-    
+
+    // Get pending items for popup
+    if (message.action === 'GET_PENDING_ITEMS') {
+      console.log('[DIGGIN] Background: Getting pending items for popup');
+      
+      safeStorageGet('pendingCopiedItems').then(pendingItems => {
+        console.log(`📋 Sending ${pendingItems?.length || 0} pending items to popup`);
+        
+        sendResponse({ 
+          success: true, 
+          pendingItems: pendingItems || [] 
+        });
+      }).catch((error: any) => {
+        console.error('[DIGGIN] Background: Failed to get pending items:', error);
+        sendResponse({ 
+          success: false, 
+          error: error.message || 'Unknown error',
+          pendingItems: [] 
+        });
+      });
+      
+      return true;
+    }
+
+    // Clear pending items after successful Firebase upload
+    if (message.action === 'CLEAR_PENDING_ITEMS') {
+      console.log('[DIGGIN] Background: Clearing pending items after successful upload');
+      
+      safeStorageSet('pendingCopiedItems', []).then(() => {
+        console.log('✅ Pending items cleared successfully');
+        
+        sendResponse({ success: true });
+      }).catch((error: any) => {
+        console.error('[DIGGIN] Background: Failed to clear pending items:', error);
+        sendResponse({ 
+          success: false, 
+          error: error.message || 'Unknown error'
+        });
+      });
+      
+      return true;
+    }
+
     return false;
   } catch (error) {
     console.warn('[DIGGIN] Background: Error handling message:', error);
@@ -735,7 +960,11 @@ async function restoreActiveSession(): Promise<void> {
       console.log('[DIGGIN] Background: Found saved session, restoring');
       session.isActive = true;
       session.data = savedSession;
-      console.log('[DIGGIN] Background: Session restored successfully');
+      
+      // Start the timer to continue the session
+      startSessionTimer();
+      
+      console.log('[DIGGIN] Background: Session restored and timer started');
     } else {
       console.log('[DIGGIN] Background: No saved session found');
     }
