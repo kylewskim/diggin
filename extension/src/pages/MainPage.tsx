@@ -155,14 +155,14 @@ const MainPage: React.FC = () => {
           >
             Create a Hole
           </Button>
-          <Button
+          {/* <Button
             variant="secondary"
             size="sm"
             onClick={handleChromeLogout}
             className="self-stretch mt-2"
           >
             🧪 Test Chrome Logout
-          </Button>
+          </Button> */}
         </div>
       </div>
     </div>
@@ -215,14 +215,6 @@ const MainPage: React.FC = () => {
             className="self-stretch"
           >
             Create a Hole
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleChromeLogout}
-            className="self-stretch mt-2"
-          >
-            🧪 Test Chrome Logout
           </Button>
         </div>
       </div>

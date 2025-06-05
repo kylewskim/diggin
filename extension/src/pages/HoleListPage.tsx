@@ -7,6 +7,7 @@ import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getUserHoles } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
+import { getSessionEntriesCount } from '@shared/services/textEntryService';
 import { Hole } from '@shared/models/types';
 import { signOut } from '@shared/services/auth';
 import './scrollbar.css'; // 스크롤바 스타일 추가
@@ -52,24 +53,56 @@ const HoleListPage = () => {
   const navigate = useNavigate();
   const [selectedHole, setSelectedHole] = useState<string | null>(null);
   const [holes, setHoles] = useState<Hole[]>([]);
+  const [holeInsightCounts, setHoleInsightCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadInsightCounts = async (holesData: Hole[]) => {
+    // 1. 즉시 UI 응답성 확보
+    const initialCounts: Record<string, number> = {};
+    holesData.forEach(hole => {
+      initialCounts[hole.id] = 0;
+    });
+    setHoleInsightCounts(initialCounts);
+
+    // 2. 백그라운드에서 병렬 처리
+    const promises = holesData.map(async (hole) => {
+      try {
+        const sessions = await getHoleSessions(hole.id);
+        if (sessions.length === 0) return { holeId: hole.id, count: 0 };
+
+        const countPromises = sessions.map(session => getSessionEntriesCount(session.id));
+        const sessionCounts = await Promise.all(countPromises);
+        const totalInsights = sessionCounts.reduce((sum, count) => sum + count, 0);
+        
+        return { holeId: hole.id, count: totalInsights };
+      } catch (error) {
+        console.error(`Hole ${hole.id} 카운트 로딩 실패:`, error);
+        return { holeId: hole.id, count: 0 };
+      }
+    });
+
+    // 3. 완료되는 대로 즉시 업데이트
+    promises.forEach(async (promise) => {
+      const { holeId, count } = await promise;
+      setHoleInsightCounts(prev => ({ ...prev, [holeId]: count }));
+    });
+  };
+
   useEffect(() => {
-    // 로그인 상태 확인 및 사용자의 hole 목록 가져오기
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
         navigate('/', { replace: true });
         return;
       }
 
       try {
-        // 사용자의 hole 목록 가져오기
         const userHoles = await getUserHoles(user.uid);
         setHoles(userHoles);
         
-        // hole이 없으면 메인 페이지로 이동
+        // 인사이트 카운트 로딩
+        await loadInsightCounts(userHoles);
+        
         if (userHoles.length === 0) {
           navigate('/main', { replace: true });
         }
@@ -199,7 +232,7 @@ const HoleListPage = () => {
                     key={hole.id}
                     icon={getIconComponent(hole.icon)}
                     name={hole.name}
-                    insightCount={0} // TODO: 실제 인사이트 수를 가져와야 함
+                    insightCount={holeInsightCounts[hole.id] || 0}
                     selected={selectedHole === hole.id}
                     onClick={() => handleHoleSelect(hole.id)}
                     className="rounded-lg w-full"

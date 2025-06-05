@@ -1242,6 +1242,10 @@ video {
 .tracking-\[-0\.4px\] {
   letter-spacing: -0.4px;
 }
+.\!text-text-inverted-light {
+  --tw-text-opacity: 1 !important;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1)) !important;
+}
 .text-icon-inverted-light {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
@@ -1452,6 +1456,10 @@ body {
 .dark\:bg-surface-bg-dark:is(.dark *) {
   --tw-bg-opacity: 1;
   background-color: rgb(14 14 14 / var(--tw-bg-opacity, 1));
+}
+.dark\:\!text-text-inverted-dark:is(.dark *) {
+  --tw-text-opacity: 1 !important;
+  color: rgb(14 14 14 / var(--tw-text-opacity, 1)) !important;
 }
 .dark\:text-icon-inverted-dark:is(.dark *) {
   --tw-text-opacity: 1;

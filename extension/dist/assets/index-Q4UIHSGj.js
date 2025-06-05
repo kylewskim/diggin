@@ -57,7 +57,7 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 var require_index_001 = __commonJS({
-  "assets/index-a0bm_mfz.js"(exports) {
+  "assets/index-Q4UIHSGj.js"(exports) {
     function _mergeNamespaces(n2, m2) {
       for (var i = 0; i < m2.length; i++) {
         const e = m2[i];
@@ -10735,7 +10735,7 @@ var require_index_001 = __commonJS({
         const variantStyles = {
           primary: cn$1(
             "bg-fill-primary-light dark:bg-fill-primary-dark",
-            "text-text-inverted-light dark:text-text-inverted-dark",
+            "!text-text-inverted-light dark:!text-text-inverted-dark",
             "hover:bg-gray-850 dark:hover:bg-gray-100",
             "disabled:bg-fill-disabled-light dark:disabled:bg-fill-disabled-dark",
             "disabled:text-text-disabled-light dark:disabled:text-text-disabled-dark",
@@ -41996,31 +41996,6 @@ This typically indicates that your device does not have a healthy Internet conne
           navigate("/select-icon", { state: { holeName } });
         }
       };
-      const handleChromeLogout = () => __async(exports, null, function* () {
-        try {
-          console.log("[DIGGIN] MainPage: Triggering Chrome Identity API logout");
-          if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
-            chrome.runtime.sendMessage({
-              action: "TRIGGER_LOGOUT"
-            }, (response) => {
-              if (chrome.runtime.lastError) {
-                console.error("[DIGGIN] MainPage: Logout message error:", chrome.runtime.lastError);
-                return;
-              }
-              if (response == null ? void 0 : response.success) {
-                console.log("[DIGGIN] MainPage: Chrome Identity API logout successful");
-                window.location.reload();
-              } else {
-                console.error("[DIGGIN] MainPage: Chrome Identity API logout failed:", response == null ? void 0 : response.error);
-              }
-            });
-          } else {
-            console.warn("[DIGGIN] MainPage: Not in extension environment");
-          }
-        } catch (error2) {
-          console.error("[DIGGIN] MainPage: Chrome logout failed:", error2);
-        }
-      });
       const handleBackClick = () => {
         navigate("/hole-list");
       };
@@ -42053,16 +42028,6 @@ This typically indicates that your device does not have a healthy Internet conne
                 onClick: handleCreateHole,
                 className: "self-stretch",
                 children: "Create a Hole"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button,
-              {
-                variant: "secondary",
-                size: "sm",
-                onClick: handleChromeLogout,
-                className: "self-stretch mt-2",
-                children: "🧪 Test Chrome Logout"
               }
             )
           ] })
@@ -42107,16 +42072,6 @@ This typically indicates that your device does not have a healthy Internet conne
                 onClick: handleCreateHole,
                 className: "self-stretch",
                 children: "Create a Hole"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button,
-              {
-                variant: "secondary",
-                size: "sm",
-                onClick: handleChromeLogout,
-                className: "self-stretch mt-2",
-                children: "🧪 Test Chrome Logout"
               }
             )
           ] })
@@ -42522,6 +42477,97 @@ This typically indicates that your device does not have a healthy Internet conne
         throw error2;
       }
     });
+    const getSessionEntries = (sessionId, pageSize = 20, lastDoc) => __async(exports, null, function* () {
+      try {
+        console.log("🔍 [DEBUG] getSessionEntries called with:");
+        console.log("  sessionId:", sessionId, "type:", typeof sessionId);
+        console.log("  pageSize:", pageSize, "type:", typeof pageSize);
+        console.log("  lastDoc:", !!lastDoc);
+        if (!sessionId) {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is falsy!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntries: Invalid sessionId: ${sessionId}`);
+        }
+        if (typeof sessionId !== "string") {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is not a string!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntries: sessionId must be string, got ${typeof sessionId}`);
+        }
+        if (sessionId.trim() === "") {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is empty string!");
+          throw new Error("getSessionEntries: sessionId cannot be empty");
+        }
+        console.log("✅ [DEBUG] getSessionEntries: sessionId validation passed");
+        if (pageSize === 0) {
+          console.log("🔄 [DEBUG] getSessionEntries: pageSize is 0, returning empty array for session initialization");
+          return {
+            entries: [],
+            lastDoc: null,
+            hasMore: false
+          };
+        }
+        let entriesQuery = query(
+          collection(db, "textEntries"),
+          where("sessionId", "==", sessionId),
+          orderBy("capturedAt", "desc"),
+          limit(pageSize + 1)
+          // Get one extra to check if there are more
+        );
+        if (lastDoc) ;
+        console.log("🔍 [DEBUG] getSessionEntries: About to execute Firebase query with sessionId:", sessionId);
+        const querySnapshot = yield getDocs(entriesQuery);
+        console.log("✅ [DEBUG] getSessionEntries: Firebase query completed, docs count:", querySnapshot.docs.length);
+        const entries = [];
+        const hasMore = querySnapshot.docs.length > pageSize;
+        const docsToProcess = hasMore ? querySnapshot.docs.slice(0, pageSize) : querySnapshot.docs;
+        docsToProcess.forEach((doc2) => {
+          entries.push(__spreadValues({ id: doc2.id }, doc2.data()));
+        });
+        const newLastDoc = querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null;
+        console.log("✅ [DEBUG] getSessionEntries: Returning", entries.length, "entries");
+        return {
+          entries,
+          lastDoc: newLastDoc,
+          hasMore
+        };
+      } catch (error2) {
+        console.error("Error getting session entries:", error2);
+        console.error("🔍 [DEBUG] getSessionEntries error details:");
+        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
+        console.error("  pageSize at error:", pageSize);
+        console.error("  Error stack:", error2 instanceof Error ? error2.stack : "No stack available");
+        throw error2;
+      }
+    });
+    const getSessionEntriesCount = (sessionId) => __async(exports, null, function* () {
+      try {
+        console.log("🔍 [DEBUG] getSessionEntriesCount called with sessionId:", sessionId);
+        if (!sessionId) {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is falsy!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntriesCount: Invalid sessionId: ${sessionId}`);
+        }
+        if (typeof sessionId !== "string") {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is not a string!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntriesCount: sessionId must be string, got ${typeof sessionId}`);
+        }
+        if (sessionId.trim() === "") {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is empty string!");
+          throw new Error("getSessionEntriesCount: sessionId cannot be empty");
+        }
+        const entriesQuery = query(
+          collection(db, "textEntries"),
+          where("sessionId", "==", sessionId)
+        );
+        console.log("🔍 [DEBUG] getSessionEntriesCount: About to execute Firebase count query");
+        const querySnapshot = yield getDocs(entriesQuery);
+        const count = querySnapshot.docs.length;
+        console.log(`✅ [DEBUG] getSessionEntriesCount: Found ${count} entries for session ${sessionId}`);
+        return count;
+      } catch (error2) {
+        console.error("Error getting session entries count:", error2);
+        console.error("🔍 [DEBUG] getSessionEntriesCount error details:");
+        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
+        throw error2;
+      }
+    });
     const getIconById$1 = (iconId) => {
       if (iconId === "utility-1") return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchIcon, {});
       if (iconId === "utility-2") return /* @__PURE__ */ jsxRuntimeExports.jsx(AddIcon, {});
@@ -42555,8 +42601,33 @@ This typically indicates that your device does not have a healthy Internet conne
       const navigate = useNavigate();
       const [selectedHole, setSelectedHole] = reactExports.useState(null);
       const [holes, setHoles] = reactExports.useState([]);
+      const [holeInsightCounts, setHoleInsightCounts] = reactExports.useState({});
       const [loading, setLoading] = reactExports.useState(true);
       const [error2, setError] = reactExports.useState(null);
+      const loadInsightCounts = (holesData) => __async(exports, null, function* () {
+        const initialCounts = {};
+        holesData.forEach((hole) => {
+          initialCounts[hole.id] = 0;
+        });
+        setHoleInsightCounts(initialCounts);
+        const promises = holesData.map((hole) => __async(exports, null, function* () {
+          try {
+            const sessions = yield getHoleSessions(hole.id);
+            if (sessions.length === 0) return { holeId: hole.id, count: 0 };
+            const countPromises = sessions.map((session) => getSessionEntriesCount(session.id));
+            const sessionCounts = yield Promise.all(countPromises);
+            const totalInsights = sessionCounts.reduce((sum, count) => sum + count, 0);
+            return { holeId: hole.id, count: totalInsights };
+          } catch (error22) {
+            console.error(`Hole ${hole.id} 카운트 로딩 실패:`, error22);
+            return { holeId: hole.id, count: 0 };
+          }
+        }));
+        promises.forEach((promise) => __async(exports, null, function* () {
+          const { holeId, count } = yield promise;
+          setHoleInsightCounts((prev) => __spreadProps(__spreadValues({}, prev), { [holeId]: count }));
+        }));
+      });
       reactExports.useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => __async(exports, null, function* () {
           if (!user) {
@@ -42566,6 +42637,7 @@ This typically indicates that your device does not have a healthy Internet conne
           try {
             const userHoles = yield getUserHoles(user.uid);
             setHoles(userHoles);
+            yield loadInsightCounts(userHoles);
             if (userHoles.length === 0) {
               navigate("/main", { replace: true });
             }
@@ -42660,7 +42732,7 @@ This typically indicates that your device does not have a healthy Internet conne
           {
             icon: getIconComponent(hole.icon),
             name: hole.name,
-            insightCount: 0,
+            insightCount: holeInsightCounts[hole.id] || 0,
             selected: selectedHole === hole.id,
             onClick: () => handleHoleSelect(hole.id),
             className: "rounded-lg w-full"
@@ -43112,6 +43184,41 @@ This typically indicates that your device does not have a healthy Internet conne
       const [sessions, setSessions] = reactExports.useState([]);
       const [selectedSessionId, setSelectedSessionId] = reactExports.useState(null);
       const [listHoverState, setListHoverState] = reactExports.useState(null);
+      const loadSessionInsightCounts = (sessionsList) => __async(exports, null, function* () {
+        console.log("🔍 [DEBUG] SessionListPage: Starting to load insight counts for", sessionsList.length, "sessions");
+        try {
+          const sessionCountPromises = sessionsList.map((session) => __async(exports, null, function* () {
+            console.log(`🔍 [DEBUG] SessionListPage: Loading count for session ${session.id} (${session.name})`);
+            try {
+              const count = yield getSessionEntriesCount(session.id);
+              console.log(`✅ [DEBUG] SessionListPage: Session ${session.id} has ${count} insights`);
+              return {
+                id: session.id,
+                name: session.name,
+                insightCount: count
+              };
+            } catch (error22) {
+              console.error(`❌ [DEBUG] SessionListPage: Failed to load count for session ${session.id}:`, error22);
+              return {
+                id: session.id,
+                name: session.name,
+                insightCount: 0
+              };
+            }
+          }));
+          const sessionsWithCounts = yield Promise.all(sessionCountPromises);
+          console.log("✅ [DEBUG] SessionListPage: All session counts loaded, setting sessions");
+          setSessions(sessionsWithCounts);
+        } catch (error22) {
+          console.error("❌ [DEBUG] SessionListPage: Failed to load session counts:", error22);
+          const fallbackSessions = sessionsList.map((session) => ({
+            id: session.id,
+            name: session.name,
+            insightCount: 0
+          }));
+          setSessions(fallbackSessions);
+        }
+      });
       reactExports.useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => __async(exports, null, function* () {
           if (!user) {
@@ -43130,13 +43237,7 @@ This typically indicates that your device does not have a healthy Internet conne
             }
             setHole(holeData);
             const sessionsList = yield getHoleSessions(state.holeId);
-            const sessionItems = sessionsList.map((session) => ({
-              id: session.id,
-              name: session.name,
-              insightCount: 0
-              // TODO: insight 수를 가져오는 로직 추가 필요
-            }));
-            setSessions(sessionItems);
+            yield loadSessionInsightCounts(sessionsList);
           } catch (err) {
             console.error("홀 정보 가져오기 실패:", err);
             setError("홀 정보를 불러오는데 실패했습니다.");
@@ -43247,97 +43348,6 @@ This typically indicates that your device does not have a healthy Internet conne
         ] })
       ] });
     };
-    const getSessionEntries = (sessionId, pageSize = 20, lastDoc) => __async(exports, null, function* () {
-      try {
-        console.log("🔍 [DEBUG] getSessionEntries called with:");
-        console.log("  sessionId:", sessionId, "type:", typeof sessionId);
-        console.log("  pageSize:", pageSize, "type:", typeof pageSize);
-        console.log("  lastDoc:", !!lastDoc);
-        if (!sessionId) {
-          console.error("❌ [ERROR] getSessionEntries: sessionId is falsy!", { sessionId, type: typeof sessionId });
-          throw new Error(`getSessionEntries: Invalid sessionId: ${sessionId}`);
-        }
-        if (typeof sessionId !== "string") {
-          console.error("❌ [ERROR] getSessionEntries: sessionId is not a string!", { sessionId, type: typeof sessionId });
-          throw new Error(`getSessionEntries: sessionId must be string, got ${typeof sessionId}`);
-        }
-        if (sessionId.trim() === "") {
-          console.error("❌ [ERROR] getSessionEntries: sessionId is empty string!");
-          throw new Error("getSessionEntries: sessionId cannot be empty");
-        }
-        console.log("✅ [DEBUG] getSessionEntries: sessionId validation passed");
-        if (pageSize === 0) {
-          console.log("🔄 [DEBUG] getSessionEntries: pageSize is 0, returning empty array for session initialization");
-          return {
-            entries: [],
-            lastDoc: null,
-            hasMore: false
-          };
-        }
-        let entriesQuery = query(
-          collection(db, "textEntries"),
-          where("sessionId", "==", sessionId),
-          orderBy("capturedAt", "desc"),
-          limit(pageSize + 1)
-          // Get one extra to check if there are more
-        );
-        if (lastDoc) ;
-        console.log("🔍 [DEBUG] getSessionEntries: About to execute Firebase query with sessionId:", sessionId);
-        const querySnapshot = yield getDocs(entriesQuery);
-        console.log("✅ [DEBUG] getSessionEntries: Firebase query completed, docs count:", querySnapshot.docs.length);
-        const entries = [];
-        const hasMore = querySnapshot.docs.length > pageSize;
-        const docsToProcess = hasMore ? querySnapshot.docs.slice(0, pageSize) : querySnapshot.docs;
-        docsToProcess.forEach((doc2) => {
-          entries.push(__spreadValues({ id: doc2.id }, doc2.data()));
-        });
-        const newLastDoc = querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null;
-        console.log("✅ [DEBUG] getSessionEntries: Returning", entries.length, "entries");
-        return {
-          entries,
-          lastDoc: newLastDoc,
-          hasMore
-        };
-      } catch (error2) {
-        console.error("Error getting session entries:", error2);
-        console.error("🔍 [DEBUG] getSessionEntries error details:");
-        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
-        console.error("  pageSize at error:", pageSize);
-        console.error("  Error stack:", error2 instanceof Error ? error2.stack : "No stack available");
-        throw error2;
-      }
-    });
-    const getSessionEntriesCount = (sessionId) => __async(exports, null, function* () {
-      try {
-        console.log("🔍 [DEBUG] getSessionEntriesCount called with sessionId:", sessionId);
-        if (!sessionId) {
-          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is falsy!", { sessionId, type: typeof sessionId });
-          throw new Error(`getSessionEntriesCount: Invalid sessionId: ${sessionId}`);
-        }
-        if (typeof sessionId !== "string") {
-          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is not a string!", { sessionId, type: typeof sessionId });
-          throw new Error(`getSessionEntriesCount: sessionId must be string, got ${typeof sessionId}`);
-        }
-        if (sessionId.trim() === "") {
-          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is empty string!");
-          throw new Error("getSessionEntriesCount: sessionId cannot be empty");
-        }
-        const entriesQuery = query(
-          collection(db, "textEntries"),
-          where("sessionId", "==", sessionId)
-        );
-        console.log("🔍 [DEBUG] getSessionEntriesCount: About to execute Firebase count query");
-        const querySnapshot = yield getDocs(entriesQuery);
-        const count = querySnapshot.docs.length;
-        console.log(`✅ [DEBUG] getSessionEntriesCount: Found ${count} entries for session ${sessionId}`);
-        return count;
-      } catch (error2) {
-        console.error("Error getting session entries count:", error2);
-        console.error("🔍 [DEBUG] getSessionEntriesCount error details:");
-        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
-        throw error2;
-      }
-    });
     const OnSessionPage = () => {
       const navigate = useNavigate();
       const location2 = useLocation();

@@ -6,6 +6,7 @@ import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getHole } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
+import { getSessionEntriesCount } from '@shared/services/textEntryService';
 import { Hole, Session } from '@shared/models/types';
 import { List } from '@shared/components/ui/List';
 
@@ -30,6 +31,49 @@ const SessionListPage: React.FC = () => {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [listHoverState, setListHoverState] = useState<string | null>(null);
+
+  // 세션별 인사이트 카운트 로딩 함수
+  const loadSessionInsightCounts = async (sessionsList: Session[]) => {
+    console.log('🔍 [DEBUG] SessionListPage: Starting to load insight counts for', sessionsList.length, 'sessions');
+    
+    try {
+      // 모든 세션의 인사이트 카운트를 병렬로 가져오기
+      const sessionCountPromises = sessionsList.map(async (session) => {
+        console.log(`🔍 [DEBUG] SessionListPage: Loading count for session ${session.id} (${session.name})`);
+        try {
+          const count = await getSessionEntriesCount(session.id);
+          console.log(`✅ [DEBUG] SessionListPage: Session ${session.id} has ${count} insights`);
+          return {
+            id: session.id,
+            name: session.name,
+            insightCount: count
+          };
+        } catch (error) {
+          console.error(`❌ [DEBUG] SessionListPage: Failed to load count for session ${session.id}:`, error);
+          return {
+            id: session.id,
+            name: session.name,
+            insightCount: 0
+          };
+        }
+      });
+
+      // 모든 Promise가 완료될 때까지 기다림
+      const sessionsWithCounts = await Promise.all(sessionCountPromises);
+      
+      console.log('✅ [DEBUG] SessionListPage: All session counts loaded, setting sessions');
+      setSessions(sessionsWithCounts);
+    } catch (error) {
+      console.error('❌ [DEBUG] SessionListPage: Failed to load session counts:', error);
+      // 에러 발생 시 0으로 설정
+      const fallbackSessions: SessionItem[] = sessionsList.map(session => ({
+        id: session.id,
+        name: session.name,
+        insightCount: 0
+      }));
+      setSessions(fallbackSessions);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -56,14 +100,8 @@ const SessionListPage: React.FC = () => {
         // 홀에 속한 세션 목록 가져오기
         const sessionsList = await getHoleSessions(state.holeId);
         
-        // SessionItem 형식으로 변환
-        const sessionItems: SessionItem[] = sessionsList.map(session => ({
-          id: session.id,
-          name: session.name,
-          insightCount: 0 // TODO: insight 수를 가져오는 로직 추가 필요
-        }));
-        
-        setSessions(sessionItems);
+        // 세션별 인사이트 카운트 로딩 (점진적 업데이트)
+        await loadSessionInsightCounts(sessionsList);
       } catch (err) {
         console.error('홀 정보 가져오기 실패:', err);
         setError('홀 정보를 불러오는데 실패했습니다.');
