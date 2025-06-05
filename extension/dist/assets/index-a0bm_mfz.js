@@ -57,7 +57,7 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 var require_index_001 = __commonJS({
-  "assets/index-DkDGthZ4.js"(exports) {
+  "assets/index-a0bm_mfz.js"(exports) {
     function _mergeNamespaces(n2, m2) {
       for (var i = 0; i < m2.length; i++) {
         const e = m2[i];
@@ -43249,6 +43249,31 @@ This typically indicates that your device does not have a healthy Internet conne
     };
     const getSessionEntries = (sessionId, pageSize = 20, lastDoc) => __async(exports, null, function* () {
       try {
+        console.log("🔍 [DEBUG] getSessionEntries called with:");
+        console.log("  sessionId:", sessionId, "type:", typeof sessionId);
+        console.log("  pageSize:", pageSize, "type:", typeof pageSize);
+        console.log("  lastDoc:", !!lastDoc);
+        if (!sessionId) {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is falsy!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntries: Invalid sessionId: ${sessionId}`);
+        }
+        if (typeof sessionId !== "string") {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is not a string!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntries: sessionId must be string, got ${typeof sessionId}`);
+        }
+        if (sessionId.trim() === "") {
+          console.error("❌ [ERROR] getSessionEntries: sessionId is empty string!");
+          throw new Error("getSessionEntries: sessionId cannot be empty");
+        }
+        console.log("✅ [DEBUG] getSessionEntries: sessionId validation passed");
+        if (pageSize === 0) {
+          console.log("🔄 [DEBUG] getSessionEntries: pageSize is 0, returning empty array for session initialization");
+          return {
+            entries: [],
+            lastDoc: null,
+            hasMore: false
+          };
+        }
         let entriesQuery = query(
           collection(db, "textEntries"),
           where("sessionId", "==", sessionId),
@@ -43257,7 +43282,9 @@ This typically indicates that your device does not have a healthy Internet conne
           // Get one extra to check if there are more
         );
         if (lastDoc) ;
+        console.log("🔍 [DEBUG] getSessionEntries: About to execute Firebase query with sessionId:", sessionId);
         const querySnapshot = yield getDocs(entriesQuery);
+        console.log("✅ [DEBUG] getSessionEntries: Firebase query completed, docs count:", querySnapshot.docs.length);
         const entries = [];
         const hasMore = querySnapshot.docs.length > pageSize;
         const docsToProcess = hasMore ? querySnapshot.docs.slice(0, pageSize) : querySnapshot.docs;
@@ -43265,6 +43292,7 @@ This typically indicates that your device does not have a healthy Internet conne
           entries.push(__spreadValues({ id: doc2.id }, doc2.data()));
         });
         const newLastDoc = querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null;
+        console.log("✅ [DEBUG] getSessionEntries: Returning", entries.length, "entries");
         return {
           entries,
           lastDoc: newLastDoc,
@@ -43272,6 +43300,41 @@ This typically indicates that your device does not have a healthy Internet conne
         };
       } catch (error2) {
         console.error("Error getting session entries:", error2);
+        console.error("🔍 [DEBUG] getSessionEntries error details:");
+        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
+        console.error("  pageSize at error:", pageSize);
+        console.error("  Error stack:", error2 instanceof Error ? error2.stack : "No stack available");
+        throw error2;
+      }
+    });
+    const getSessionEntriesCount = (sessionId) => __async(exports, null, function* () {
+      try {
+        console.log("🔍 [DEBUG] getSessionEntriesCount called with sessionId:", sessionId);
+        if (!sessionId) {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is falsy!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntriesCount: Invalid sessionId: ${sessionId}`);
+        }
+        if (typeof sessionId !== "string") {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is not a string!", { sessionId, type: typeof sessionId });
+          throw new Error(`getSessionEntriesCount: sessionId must be string, got ${typeof sessionId}`);
+        }
+        if (sessionId.trim() === "") {
+          console.error("❌ [ERROR] getSessionEntriesCount: sessionId is empty string!");
+          throw new Error("getSessionEntriesCount: sessionId cannot be empty");
+        }
+        const entriesQuery = query(
+          collection(db, "textEntries"),
+          where("sessionId", "==", sessionId)
+        );
+        console.log("🔍 [DEBUG] getSessionEntriesCount: About to execute Firebase count query");
+        const querySnapshot = yield getDocs(entriesQuery);
+        const count = querySnapshot.docs.length;
+        console.log(`✅ [DEBUG] getSessionEntriesCount: Found ${count} entries for session ${sessionId}`);
+        return count;
+      } catch (error2) {
+        console.error("Error getting session entries count:", error2);
+        console.error("🔍 [DEBUG] getSessionEntriesCount error details:");
+        console.error("  sessionId at error:", sessionId, "type:", typeof sessionId);
         throw error2;
       }
     });
@@ -43453,9 +43516,36 @@ This typically indicates that your device does not have a healthy Internet conne
                 }
               });
             }
-            const insightData = yield getSessionEntries(state.sessionId);
+            console.log("🔍 [DEBUG] About to initialize insights - sessionId:", state.sessionId, "session:", !!session);
+            console.log("🔍 [DEBUG] State object:", state);
+            console.log("🔍 [DEBUG] Session object:", session);
+            if (!state.sessionId) {
+              console.error("❌ [ERROR] state.sessionId is undefined!");
+              setError("세션 ID가 없습니다. 다시 세션을 시작해주세요.");
+              navigate("/");
+              return;
+            }
+            console.log("🔄 [DEBUG] Initializing session with empty insights array");
+            const sessionIdToUse = (sessionData == null ? void 0 : sessionData.id) || state.sessionId;
+            console.log("🔍 [DEBUG] Using sessionId:", sessionIdToUse);
+            if (!sessionIdToUse) {
+              console.error("❌ [ERROR] No valid sessionId available!");
+              setError("세션 ID가 없습니다. 다시 세션을 시작해주세요.");
+              navigate("/");
+              return;
+            }
+            console.log("🔄 [DEBUG] Getting actual insight count from Firebase");
+            try {
+              const actualCount = yield getSessionEntriesCount(sessionIdToUse);
+              console.log(`✅ [DEBUG] Found ${actualCount} existing insights in Firebase`);
+              setInsightCount(actualCount);
+            } catch (countError) {
+              console.error("❌ [ERROR] Failed to get insight count from Firebase:", countError);
+              setInsightCount(0);
+            }
+            const insightData = yield getSessionEntries(sessionIdToUse, 0);
             setInsights(insightData.entries);
-            setInsightCount(insightData.entries.length);
+            console.log("✅ [DEBUG] Session initialized with empty insights array but real Firebase count");
             if (insightData.entries.length > 0) {
               console.log("📋 Detailed insights list:");
               const entriesCollection = collection(db, "textEntries");
@@ -43758,12 +43848,7 @@ This typically indicates that your device does not have a healthy Internet conne
             sourceDomain = "unknown";
           }
           console.log("Current URL:", currentUrl, "Domain:", sourceDomain);
-          console.log("Creating text entry in Firebase with data:", {
-            sessionId: session.id,
-            content: copiedText,
-            sourceUrl: currentUrl,
-            sourceDomain
-          });
+          console.log("💾 [DEBUG] Adding new insight to local state");
           const entriesCollection = collection(db, "textEntries");
           const docRef = yield addDoc(entriesCollection, {
             sessionId: session.id,
@@ -43774,53 +43859,32 @@ This typically indicates that your device does not have a healthy Internet conne
             capturedAt: serverTimestamp(),
             isBookmarked: false
           });
-          console.log("Text entry successfully saved to Firebase with ID:", docRef.id);
-          console.log("Refreshing insights list...");
-          const insightData = yield getSessionEntries(session.id);
-          setInsights(insightData.entries);
-          setInsightCount(insightData.entries.length);
-          console.log("Insights list updated:", {
-            totalInsights: insightData.entries.length,
-            latestInsight: insightData.entries[0]
-          });
-          if (insightData.entries.length > 0) {
-            console.log("📋 Detailed insights list:");
-            const entriesCollection2 = collection(db, "textEntries");
-            for (const [index, entry] of insightData2.entries.entries()) {
-              console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"`);
-              console.log(`     URL: ${entry.sourceUrl || "No URL"}`);
-              console.log(`     Domain: ${entry.sourceDomain || "No domain"}`);
-              console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : "No timestamp"}`);
-              console.log(`     Entry ID: ${entry.id || "No ID"}`);
-              console.log("     ---");
-              try {
-                const docRef2 = yield addDoc(entriesCollection2, {
-                  sessionId: session.id,
-                  holeId: hole.id,
-                  content: `${entry.content || "No content"}`,
-                  sourceUrl: `${entry.sourceUrl || "No URL"}`,
-                  sourceDomain: `${entry.sourceDomain || "No domain"}`,
-                  capturedAt: serverTimestamp(),
-                  isBookmarked: false
-                });
-                console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef2.id}`);
-              } catch (error22) {
-                console.error(`❌ Failed to save entry ${index + 1}:`, error22);
-              }
-            }
-            console.log("Refreshing insights list...");
-            const insightData2 = yield getSessionEntries(session.id);
-            setInsights(insightData2.entries);
-            setInsightCount(insightData2.entries.length);
-            console.log("Insights list updated:", {
-              totalInsights: insightData2.entries.length,
-              latestInsight: insightData2.entries[0]
-            });
-            insightData2.entries = [];
-            console.log("🗑️ Cleared insightData.entries array");
-          } else {
-            console.log("📋 No insights found in the list");
+          console.log("✅ [DEBUG] Text entry successfully saved to Firebase with ID:", docRef.id);
+          const newEntry = {
+            id: docRef.id,
+            sessionId: session.id,
+            holeId: hole.id,
+            content: copiedText,
+            sourceUrl: currentUrl,
+            sourceDomain,
+            capturedAt: /* @__PURE__ */ new Date(),
+            // 임시로 현재 시간 사용
+            isBookmarked: false
+          };
+          setInsights((prev) => [newEntry, ...prev]);
+          try {
+            const updatedCount = yield getSessionEntriesCount(session.id);
+            console.log(`🔄 [DEBUG] Updated insight count from Firebase: ${updatedCount}`);
+            setInsightCount(updatedCount);
+          } catch (countError) {
+            console.error("❌ [ERROR] Failed to get updated insight count:", countError);
+            setInsightCount((prev) => prev + 1);
           }
+          console.log("✅ [DEBUG] New insight added to local state with Firebase count update:", {
+            entryId: docRef.id,
+            content: copiedText.substring(0, 50) + "...",
+            firebaseCount: "updated from server"
+          });
         } catch (err) {
           console.error("Failed to save copied text:", err);
         }
@@ -43914,22 +43978,15 @@ This typically indicates that your device does not have a healthy Internet conne
               );
             });
             console.log("🔄 [DEBUG] Refreshing insights list...");
-            const insightData = yield getSessionEntries(session.id);
-            setInsights(insightData.entries);
-            setInsightCount(insightData.entries.length);
-            console.log("✅ [DEBUG] Insights list refreshed - new count:", insightData.entries.length);
-            if (insightData.entries.length > 0) {
-              console.log("📋 [DEBUG] Detailed insights list after processing pending items:");
-              insightData.entries.forEach((entry, index) => {
-                console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"`);
-                console.log(`     URL: ${entry.sourceUrl || "No URL"}`);
-                console.log(`     Domain: ${entry.sourceDomain || "No domain"}`);
-                console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : "No timestamp"}`);
-                console.log(`     Entry ID: ${entry.id || "No ID"}`);
-                console.log("     ---");
-              });
-            } else {
-              console.log("📋 [DEBUG] No insights found in the list after processing");
+            try {
+              const updatedCount = yield getSessionEntriesCount(session.id);
+              console.log(`✅ [DEBUG] Updated insight count from Firebase: ${updatedCount}`);
+              setInsightCount(updatedCount);
+            } catch (countError) {
+              console.error("❌ [ERROR] Failed to get updated insight count:", countError);
+              const insightData = yield getSessionEntries(session.id);
+              setInsights(insightData.entries);
+              setInsightCount(insightData.entries.length);
             }
           }
         } catch (error22) {

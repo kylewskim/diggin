@@ -6,7 +6,7 @@ import { auth } from '@shared/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getHole } from '@shared/services/holeService';
 import { getSession, updateSessionDuration, updateSessionActiveStatus, updateSession } from '@shared/services/sessionService';
-import { createTextEntry, getSessionEntries } from '@shared/services/textEntryService';
+import { createTextEntry, getSessionEntries, getSessionEntriesCount } from '@shared/services/textEntryService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
 import { doc, updateDoc, Timestamp, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@shared/firebase';
@@ -286,10 +286,46 @@ const OnSessionPage: React.FC = () => {
           });
         }
         
-        // 인사이트 로드
-        const insightData = await getSessionEntries(state.sessionId);
-        setInsights(insightData.entries);
-        setInsightCount(insightData.entries.length);
+        // 인사이트 로드 - 세션 시작 시 빈 배열로 초기화
+        console.log('🔍 [DEBUG] About to initialize insights - sessionId:', state.sessionId, 'session:', !!session);
+        console.log('🔍 [DEBUG] State object:', state);
+        console.log('🔍 [DEBUG] Session object:', session);
+        
+        if (!state.sessionId) {
+          console.error('❌ [ERROR] state.sessionId is undefined!');
+          setError('세션 ID가 없습니다. 다시 세션을 시작해주세요.');
+          navigate('/');
+          return;
+        }
+        
+        // 🎯 NEW: 세션 시작 시 빈 배열로 초기화 (pageSize=0)
+        console.log('🔄 [DEBUG] Initializing session with empty insights array');
+        const sessionIdToUse = sessionData?.id || state.sessionId;
+        console.log('🔍 [DEBUG] Using sessionId:', sessionIdToUse);
+        
+        if (!sessionIdToUse) {
+          console.error('❌ [ERROR] No valid sessionId available!');
+          setError('세션 ID가 없습니다. 다시 세션을 시작해주세요.');
+          navigate('/');
+          return;
+        }
+        
+        // 🎯 NEW: Firebase에서 실제 인사이트 개수 가져오기
+        console.log('🔄 [DEBUG] Getting actual insight count from Firebase');
+        try {
+          const actualCount = await getSessionEntriesCount(sessionIdToUse);
+          console.log(`✅ [DEBUG] Found ${actualCount} existing insights in Firebase`);
+          setInsightCount(actualCount);
+        } catch (countError) {
+          console.error('❌ [ERROR] Failed to get insight count from Firebase:', countError);
+          setInsightCount(0); // 폴백으로 0 설정
+        }
+        
+        // 세션 시작 시 항상 빈 배열로 시작 (실시간 관리)
+        const insightData = await getSessionEntries(sessionIdToUse, 0); // pageSize=0으로 빈 배열 반환
+        setInsights(insightData.entries); // 빈 배열
+        
+        console.log('✅ [DEBUG] Session initialized with empty insights array but real Firebase count');
         
         // Log detailed information for each entry
         if (insightData.entries.length > 0) {
@@ -697,15 +733,10 @@ const OnSessionPage: React.FC = () => {
       
       console.log('Current URL:', currentUrl, 'Domain:', sourceDomain);
 
-      // Firebase에 직접 저장
-      console.log('Creating text entry in Firebase with data:', {
-        sessionId: session.id,
-        content: copiedText,
-        sourceUrl: currentUrl,
-        sourceDomain
-      });
+      // 🎯 NEW: 실시간 인사이트 추가 (Firebase 저장 후 로컬에만 추가)
+      console.log('💾 [DEBUG] Adding new insight to local state');
       
-      // Firestore 컬렉션 참조
+      // Firebase에 저장
       const entriesCollection = collection(db, 'textEntries');
       const docRef = await addDoc(entriesCollection, {
         sessionId: session.id,
@@ -717,63 +748,39 @@ const OnSessionPage: React.FC = () => {
         isBookmarked: false
       });
       
-      console.log('Text entry successfully saved to Firebase with ID:', docRef.id);
+      console.log('✅ [DEBUG] Text entry successfully saved to Firebase with ID:', docRef.id);
 
-      // 인사이트 목록 새로고침
-      console.log('Refreshing insights list...');
-      const insightData = await getSessionEntries(session.id);
-      setInsights(insightData.entries);
-      setInsightCount(insightData.entries.length);
-      console.log('Insights list updated:', { 
-        totalInsights: insightData.entries.length,
-        latestInsight: insightData.entries[0]
-      });
+      // 🔄 NEW: 로컬 state에만 새 항목 추가 (Firebase에서 다시 가져오지 않음)
+      const newEntry: TextEntry = {
+        id: docRef.id,
+        sessionId: session.id,
+        holeId: hole.id,
+        content: copiedText,
+        sourceUrl: currentUrl,
+        sourceDomain,
+        capturedAt: new Date() as any, // 임시로 현재 시간 사용
+        isBookmarked: false
+      };
       
-      // Log detailed information for each entry
-      if (insightData.entries.length > 0) {
-        console.log('📋 Detailed insights list:');
-        const entriesCollection = collection(db, 'textEntries');
-        
-        // Use for...of loop to allow sequential async execution
-        for (const [index, entry] of insightData.entries.entries()) {
-          console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}"`);
-          console.log(`     URL: ${entry.sourceUrl || 'No URL'}`);
-          console.log(`     Domain: ${entry.sourceDomain || 'No domain'}`);
-          console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : 'No timestamp'}`);
-          console.log(`     Entry ID: ${entry.id || 'No ID'}`);
-          console.log('     ---');
-          
-          try {
-            const docRef = await addDoc(entriesCollection, {
-              sessionId: session.id,
-              holeId: hole.id,
-              content: `${entry.content || 'No content'}`,
-              sourceUrl: `${entry.sourceUrl || 'No URL'}`,
-              sourceDomain: `${entry.sourceDomain || 'No domain'}`,
-              capturedAt: serverTimestamp(),
-              isBookmarked: false
-            });
-            console.log(`✅ Successfully saved entry ${index + 1} with ID: ${docRef.id}`);
-          } catch (error) {
-            console.error(`❌ Failed to save entry ${index + 1}:`, error);
-          }
-        }
-
-      console.log('Refreshing insights list...');
-      const insightData = await getSessionEntries(session.id);
-      setInsights(insightData.entries);
-      setInsightCount(insightData.entries.length);
-      console.log('Insights list updated:', { 
-        totalInsights: insightData.entries.length,
-        latestInsight: insightData.entries[0]
-      });
-
-      insightData.entries = [];
-      console.log('🗑️ Cleared insightData.entries array');
-        
-      } else {
-        console.log('📋 No insights found in the list');
+      // 로컬 insights 배열에 새 항목 추가 (최신 항목이 맨 앞에)
+      setInsights(prev => [newEntry, ...prev]);
+      
+      // 🔄 NEW: Firebase에 저장 후 실제 개수 다시 가져오기
+      try {
+        const updatedCount = await getSessionEntriesCount(session.id);
+        console.log(`🔄 [DEBUG] Updated insight count from Firebase: ${updatedCount}`);
+        setInsightCount(updatedCount);
+      } catch (countError) {
+        console.error('❌ [ERROR] Failed to get updated insight count:', countError);
+        // 폴백으로 로컬 증가
+        setInsightCount(prev => prev + 1);
       }
+      
+      console.log('✅ [DEBUG] New insight added to local state with Firebase count update:', {
+        entryId: docRef.id,
+        content: copiedText.substring(0, 50) + '...',
+        firebaseCount: 'updated from server'
+      });
     } catch (err) {
       console.error('Failed to save copied text:', err);
     }
@@ -894,24 +901,18 @@ const OnSessionPage: React.FC = () => {
 
         // Refresh insights list to show newly added items
         console.log('🔄 [DEBUG] Refreshing insights list...');
-        const insightData = await getSessionEntries(session.id);
-        setInsights(insightData.entries);
-        setInsightCount(insightData.entries.length);
-        console.log('✅ [DEBUG] Insights list refreshed - new count:', insightData.entries.length);
         
-        // Log detailed information for each entry
-        if (insightData.entries.length > 0) {
-          console.log('📋 [DEBUG] Detailed insights list after processing pending items:');
-          insightData.entries.forEach((entry, index) => {
-            console.log(`  ${index + 1}. Content: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}"`);
-            console.log(`     URL: ${entry.sourceUrl || 'No URL'}`);
-            console.log(`     Domain: ${entry.sourceDomain || 'No domain'}`);
-            console.log(`     Timestamp: ${entry.capturedAt ? new Date(entry.capturedAt.toDate()).toLocaleString() : 'No timestamp'}`);
-            console.log(`     Entry ID: ${entry.id || 'No ID'}`);
-            console.log('     ---');
-          });
-        } else {
-          console.log('📋 [DEBUG] No insights found in the list after processing');
+        // 🎯 NEW: Firebase에서 실제 개수만 가져오기 (성능 최적화)
+        try {
+          const updatedCount = await getSessionEntriesCount(session.id);
+          console.log(`✅ [DEBUG] Updated insight count from Firebase: ${updatedCount}`);
+          setInsightCount(updatedCount);
+        } catch (countError) {
+          console.error('❌ [ERROR] Failed to get updated insight count:', countError);
+          // 폴백으로 기존 방식 사용
+          const insightData = await getSessionEntries(session.id);
+          setInsights(insightData.entries);
+          setInsightCount(insightData.entries.length);
         }
       }
     } catch (error) {
