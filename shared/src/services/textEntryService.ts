@@ -5,6 +5,7 @@ import {
   getDoc, 
   getDocs, 
   updateDoc, 
+  deleteDoc,
   query, 
   where, 
   serverTimestamp, 
@@ -286,6 +287,19 @@ export const getSessionEntriesCount = async (sessionId: string): Promise<number>
     console.error("Error getting session entries count:", error);
     console.error('🔍 [DEBUG] getSessionEntriesCount error details:');
     console.error('  sessionId at error:', sessionId, 'type:', typeof sessionId);
+    throw error;
+  }
+};
+
+/**
+ * Deletes a text entry by ID.
+ */
+export const deleteTextEntry = async (entryId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'textEntries', entryId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error("Error deleting text entry:", error);
     throw error;
   }
 }; 

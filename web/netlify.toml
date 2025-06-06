@@ -1,6 +1,17 @@
 [build]
   publish = "dist"
-  command = "npm run build"
+  command = """
+    # Install dependencies in root (for shared package)
+    cd ../
+    npm install
+    # Go back to web directory and build
+    cd web
+    npm install
+    npm run build
+  """
+
+[build.environment]
+  NODE_VERSION = "18"
 
 [[redirects]]
   from = "/*"
