@@ -77,6 +77,40 @@ export const getSessionEntries = async (
   hasMore: boolean;
 }> => {
   try {
+    // 🔍 DEBUG: 함수 시작 시 모든 파라미터 로깅
+    console.log('🔍 [DEBUG] getSessionEntries called with:');
+    console.log('  sessionId:', sessionId, 'type:', typeof sessionId);
+    console.log('  pageSize:', pageSize, 'type:', typeof pageSize);
+    console.log('  lastDoc:', !!lastDoc);
+    
+    // 🔍 DEBUG: sessionId 유효성 검사
+    if (!sessionId) {
+      console.error('❌ [ERROR] getSessionEntries: sessionId is falsy!', { sessionId, type: typeof sessionId });
+      throw new Error(`getSessionEntries: Invalid sessionId: ${sessionId}`);
+    }
+    
+    if (typeof sessionId !== 'string') {
+      console.error('❌ [ERROR] getSessionEntries: sessionId is not a string!', { sessionId, type: typeof sessionId });
+      throw new Error(`getSessionEntries: sessionId must be string, got ${typeof sessionId}`);
+    }
+    
+    if (sessionId.trim() === '') {
+      console.error('❌ [ERROR] getSessionEntries: sessionId is empty string!');
+      throw new Error('getSessionEntries: sessionId cannot be empty');
+    }
+    
+    console.log('✅ [DEBUG] getSessionEntries: sessionId validation passed');
+    
+    // 🎯 NEW: pageSize가 0이면 빈 배열 반환 (세션 초기화용)
+    if (pageSize === 0) {
+      console.log('🔄 [DEBUG] getSessionEntries: pageSize is 0, returning empty array for session initialization');
+      return {
+        entries: [],
+        lastDoc: null,
+        hasMore: false
+      };
+    }
+    
     let entriesQuery = query(
       collection(db, 'textEntries'),
       where('sessionId', '==', sessionId),
@@ -88,7 +122,10 @@ export const getSessionEntries = async (
       entriesQuery = query(entriesQuery, startAfter(lastDoc));
     }
     
+    console.log('🔍 [DEBUG] getSessionEntries: About to execute Firebase query with sessionId:', sessionId);
     const querySnapshot = await getDocs(entriesQuery);
+    console.log('✅ [DEBUG] getSessionEntries: Firebase query completed, docs count:', querySnapshot.docs.length);
+    
     const entries: TextEntry[] = [];
     
     const hasMore = querySnapshot.docs.length > pageSize;
@@ -102,6 +139,7 @@ export const getSessionEntries = async (
       ? querySnapshot.docs[querySnapshot.docs.length - 1]
       : null;
     
+    console.log('✅ [DEBUG] getSessionEntries: Returning', entries.length, 'entries');
     return {
       entries,
       lastDoc: newLastDoc,
@@ -109,6 +147,10 @@ export const getSessionEntries = async (
     };
   } catch (error) {
     console.error("Error getting session entries:", error);
+    console.error('🔍 [DEBUG] getSessionEntries error details:');
+    console.error('  sessionId at error:', sessionId, 'type:', typeof sessionId);
+    console.error('  pageSize at error:', pageSize);
+    console.error('  Error stack:', error instanceof Error ? error.stack : 'No stack available');
     throw error;
   }
 };
@@ -203,6 +245,48 @@ const extractDomain = (url: string): string => {
   } catch (error) {
     console.error("Error extracting domain:", error);
     return url; // Return the original URL if parsing fails
+  }
+};
+
+/**
+ * Gets the count of text entries for a session (without fetching the actual data).
+ */
+export const getSessionEntriesCount = async (sessionId: string): Promise<number> => {
+  try {
+    console.log('🔍 [DEBUG] getSessionEntriesCount called with sessionId:', sessionId);
+    
+    // 🔍 DEBUG: sessionId 유효성 검사
+    if (!sessionId) {
+      console.error('❌ [ERROR] getSessionEntriesCount: sessionId is falsy!', { sessionId, type: typeof sessionId });
+      throw new Error(`getSessionEntriesCount: Invalid sessionId: ${sessionId}`);
+    }
+    
+    if (typeof sessionId !== 'string') {
+      console.error('❌ [ERROR] getSessionEntriesCount: sessionId is not a string!', { sessionId, type: typeof sessionId });
+      throw new Error(`getSessionEntriesCount: sessionId must be string, got ${typeof sessionId}`);
+    }
+    
+    if (sessionId.trim() === '') {
+      console.error('❌ [ERROR] getSessionEntriesCount: sessionId is empty string!');
+      throw new Error('getSessionEntriesCount: sessionId cannot be empty');
+    }
+    
+    const entriesQuery = query(
+      collection(db, 'textEntries'),
+      where('sessionId', '==', sessionId)
+    );
+    
+    console.log('🔍 [DEBUG] getSessionEntriesCount: About to execute Firebase count query');
+    const querySnapshot = await getDocs(entriesQuery);
+    const count = querySnapshot.docs.length;
+    
+    console.log(`✅ [DEBUG] getSessionEntriesCount: Found ${count} entries for session ${sessionId}`);
+    return count;
+  } catch (error) {
+    console.error("Error getting session entries count:", error);
+    console.error('🔍 [DEBUG] getSessionEntriesCount error details:');
+    console.error('  sessionId at error:', sessionId, 'type:', typeof sessionId);
+    throw error;
   }
 }; 
  

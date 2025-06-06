@@ -39,7 +39,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const variantStyles = {
       primary: cn(
         'bg-fill-primary-light dark:bg-fill-primary-dark',
-        'text-text-inverted-light dark:text-text-inverted-dark',
+        '!text-text-inverted-light dark:!text-text-inverted-dark',
         'hover:bg-gray-850 dark:hover:bg-gray-100',
         'disabled:bg-fill-disabled-light dark:disabled:bg-fill-disabled-dark',
         'disabled:text-text-disabled-light dark:disabled:text-text-disabled-dark',
