@@ -236,8 +236,8 @@ export default function HoleListPage() {
 
   return (
     <div className="w-full min-h-screen flex flex-col">
-      {/* Header */}
-      <div data-size="lg" className="w-full h-16 px-4 sm:px-6 bg-white border-b border-gray-200 flex flex-col justify-start items-center gap-2.5">
+      {/* Fixed Header */}
+      <div data-size="lg" className="fixed top-0 left-0 right-0 z-50 w-full h-16 px-4 sm:px-6 bg-white border-b border-gray-200 flex flex-col justify-start items-center gap-2.5">
         <div className="w-full py-3 inline-flex justify-between items-center">
           <div className="text-center justify-center text-text-primary-light text-title-md leading-normal">Diggin</div>
           <div>
@@ -258,176 +258,178 @@ export default function HoleListPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 w-full px-4 sm:px-6 lg:px-24 pt-10 bg-white flex flex-col justify-start items-center gap-14 overflow-hidden">
-        <div className="w-full max-w-[1520px] flex flex-col justify-start items-start gap-5">
-          {/* Top Section with Search and Filters */}
-          <div className="w-full h-auto flex flex-col sm:flex-row sm:h-10 justify-between items-start sm:items-center gap-4 sm:gap-0">
-            <div className="justify-center text-gray-950 text-lg font-medium font-['Pretendard'] leading-normal">Holes</div>
-            <div className="flex justify-start items-center gap-2 w-full sm:w-auto">
-              <div data-status="open" className="flex-1 sm:w-80 flex justify-start items-center gap-2">
-                <div data-size="md" data-status="default" className="flex-1 h-10 rounded-lg flex justify-start items-center gap-2.5">
-                  <SingleLineTextField
-                    size="md"
-                    placeholder="Search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    isDisabled={false}
-                    error={false}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="rounded flex justify-start items-center gap-2">
-                  <div className="w-9 h-9 flex justify-center items-center gap-2.5">
-                    <div className="w-5 h-5 relative overflow-hidden text-gray-950">
-                      <Icons.SearchIcon />
+      {/* Main Content with top padding to account for fixed header */}
+      <div className="flex-1 w-full min-h-screen pt-16 px-4 sm:px-6 lg:px-24 bg-white">
+        <div className="py-10 flex flex-col justify-start items-center gap-14 min-h-[calc(100vh-64px)] overflow-y-auto">
+          <div className="w-full max-w-[1520px] flex flex-col justify-start items-start gap-5">
+            {/* Top Section with Search and Filters */}
+            <div className="w-full h-auto flex flex-col sm:flex-row sm:h-10 justify-between items-start sm:items-center gap-4 sm:gap-0">
+              <div className="justify-center text-gray-950 text-lg font-medium font-['Pretendard'] leading-normal">Holes</div>
+              <div className="flex justify-start items-center gap-2 w-full sm:w-auto">
+                <div data-status="open" className="flex-1 sm:w-80 flex justify-start items-center gap-2">
+                  <div data-size="md" data-status="default" className="flex-1 h-10 rounded-lg flex justify-start items-center gap-2.5">
+                    <SingleLineTextField
+                      size="md"
+                      placeholder="Search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      isDisabled={false}
+                      error={false}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="rounded flex justify-start items-center gap-2">
+                    <div className="w-9 h-9 flex justify-center items-center gap-2.5">
+                      <div className="w-5 h-5 relative overflow-hidden text-gray-950">
+                        <Icons.SearchIcon />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div data-status="default" className="flex justify-start items-center">
-                <div className="rounded flex justify-start items-center gap-2">
-                  <div className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded">
-                    <div className="w-5 h-5 relative text-gray-950">
-                      <Icons.FilterIcon />
+                <div data-status="default" className="flex justify-start items-center">
+                  <div className="rounded flex justify-start items-center gap-2">
+                    <div className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded">
+                      <div className="w-5 h-5 relative text-gray-950">
+                        <Icons.FilterIcon />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              {/* <div className="rounded flex justify-start items-center gap-2">
-                <div 
-                  className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded"
-                  onClick={handleAddClick}
-                >
-                  <div className="w-5 h-5 relative text-gray-950">
-                    <Icons.AddIcon />
-                  </div>
-                </div>
-              </div> */}
-            </div>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="w-full text-red-500 mb-4">{error}</div>
-          )}
-
-          {/* Content */}
-          {loading && holes.length === 0 ? (
-            <div className="py-10 flex justify-center items-center">
-              <div className="text-gray-700">Loading...</div>
-            </div>
-          ) : filteredHoles.length === 0 && searchQuery ? (
-            <div className="py-20 flex flex-col justify-center items-center gap-5">
-              <div className="text-center text-neutral-700 text-lg font-medium font-['Pretendard']">No holes found</div>
-            </div>
-          ) : filteredHoles.length === 0 ? (
-            <div className="py-20 flex flex-col justify-center items-center gap-5">
-              <div className="w-40 h-40 bg-gray-200 rounded-[100px]" />
-              <div className="text-center text-neutral-700 text-lg font-medium font-['Pretendard']">No hole yet</div>
-            </div>
-          ) : (
-            <div className="w-full flex flex-col justify-start items-center">
-              {/* Table Header */}
-              <div data-property-1="top" className="w-full h-14 pl-4 pr-3 py-3 border-b border-gray-200 inline-flex justify-between items-center">
-                <div className="flex justify-start items-center gap-4">
-                  <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Name</div>
-                </div>
-                <div className="pr-4 sm:pr-12 flex justify-start items-center gap-3 sm:gap-6">
-                  <div className="hidden sm:flex w-32 lg:w-36 justify-start items-center gap-1">
-                    <div className="w-4 h-4 relative text-gray-700">
-                      <Icons.TimeIcon />
-                    </div>
-                    <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Modified</div>
-                  </div>
-                  <div className="w-20 sm:w-32 lg:w-36 flex justify-start items-center gap-1">
-                    <div className="w-4 h-4 relative overflow-hidden text-gray-700">
-                      <Icons.HourglassIcon />
-                    </div>
-                    <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Time</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table Body */}
-              <div className="w-full flex flex-col justify-start items-start">
-                {filteredHoles.map((hole) => (
+                {/* <div className="rounded flex justify-start items-center gap-2">
                   <div 
-                    key={hole.id}
-                    data-property-1="default" 
-                    className="w-full pl-4 pr-3 py-3 border-b border-gray-200 inline-flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                    onClick={() => handleViewHole(hole.id)}
+                    className="w-9 h-9 flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded"
+                    onClick={handleAddClick}
                   >
-                    <div className="flex justify-start items-center gap-4 flex-1 min-w-0">
-                      <div className="w-5 h-5 relative overflow-hidden text-gray-950 flex-shrink-0">
-                        {getIconById(hole.icon)}
-                      </div>
-                      <div className="justify-center text-text-primary-light text-body-lg-rg leading-snug truncate">{hole.name}</div>
-                      <div className="justify-center text-text-tertiary-light text-body-lg-rg text-base leading-snug flex-shrink-0">
-                        {loadingInsights ? (
-                          <span>...</span>
-                        ) : (
-                          holeInsightCounts[hole.id] || 0
-                        )}
-                      </div>
+                    <div className="w-5 h-5 relative text-gray-950">
+                      <Icons.AddIcon />
                     </div>
-                    <div className="flex justify-start items-center gap-3 sm:gap-6">
-                      <div className="hidden sm:block w-32 lg:w-36 justify-center text-text-secondary-light text-body-md-rg leading-none">
-                        {formatDate(hole.updatedAt)}
+                  </div>
+                </div> */}
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="w-full text-red-500 mb-4">{error}</div>
+            )}
+
+            {/* Content */}
+            {loading && holes.length === 0 ? (
+              <div className="py-10 flex justify-center items-center">
+                <div className="text-gray-700">Loading...</div>
+              </div>
+            ) : filteredHoles.length === 0 && searchQuery ? (
+              <div className="py-20 flex flex-col justify-center items-center gap-5">
+                <div className="text-center text-neutral-700 text-lg font-medium font-['Pretendard']">No holes found</div>
+              </div>
+            ) : filteredHoles.length === 0 ? (
+              <div className="w-full flex flex-col justify-center items-center py-20">
+                <div className="w-32 h-32 sm:w-40 sm:h-40 bg-gray-200 rounded-full mb-5" />
+                <div className="text-center text-text-secondary-light text-title-md">No hole yet</div>
+              </div>
+            ) : (
+              <div className="w-full flex flex-col justify-start items-center">
+                {/* Table Header */}
+                <div data-property-1="top" className="w-full h-14 pl-4 pr-4 py-3 border-b border-gray-200 inline-flex justify-between items-center">
+                  <div className="flex justify-start items-center gap-4">
+                    <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Name</div>
+                  </div>
+                  <div className="pr-4 sm:pr-12 flex justify-start items-center gap-6">
+                    <div className="hidden sm:flex w-36 lg:w-36 justify-start items-center gap-1">
+                      <div className="w-4 h-4 relative text-gray-700">
+                        <Icons.TimeIcon />
                       </div>
-                      <div className="w-20 sm:w-32 lg:w-36 justify-center text-text-secondary-light text-body-md-rg leading-none">
-                        {loadingTimes ? (
-                          <span>...</span>
-                        ) : (
-                          formatDuration(holeSessionTimes[hole.id] || 0)
-                        )}
+                      <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Modified</div>
+                    </div>
+                    <div className="w-20 flex justify-start items-center gap-1">
+                      <div className="w-4 h-4 relative overflow-hidden text-gray-700">
+                        <Icons.HourglassIcon />
                       </div>
-                      <div className="rounded flex justify-start items-center gap-2">
-                        <div className="w-7 h-7 flex justify-center items-center gap-2.5">
-                          <div className="w-4 h-4 relative overflow-hidden text-gray-950">
-                            <Icons.ChevronRightIcon />
+                      <div className="justify-center text-gray-700 text-sm font-medium font-['Pretendard'] leading-none">Time</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="w-full flex flex-col justify-start items-start">
+                  {filteredHoles.map((hole) => (
+                    <div 
+                      key={hole.id}
+                      data-property-1="default" 
+                      className="w-full pl-4 pr-3 py-3 border-b border-gray-200 inline-flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                      onClick={() => handleViewHole(hole.id)}
+                    >
+                      <div className="flex justify-start items-center gap-4 flex-1 min-w-0">
+                        <div className="w-5 h-5 relative overflow-hidden text-gray-950 flex-shrink-0">
+                          {getIconById(hole.icon)}
+                        </div>
+                        <div className="justify-center text-text-primary-light text-body-lg-rg leading-snug truncate">{hole.name}</div>
+                        <div className="justify-center text-text-tertiary-light text-body-lg-rg text-base leading-snug flex-shrink-0">
+                          {loadingInsights ? (
+                            <span>...</span>
+                          ) : (
+                            holeInsightCounts[hole.id] || 0
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-start items-center gap-6">
+                        <div className="hidden sm:block w-36 lg:w-36 justify-center text-text-secondary-light text-body-md-rg leading-none">
+                          {formatDate(hole.updatedAt)}
+                        </div>
+                        <div className="w-20 justify-center text-text-secondary-light text-body-md-rg leading-none">
+                          {loadingTimes ? (
+                            <span>...</span>
+                          ) : (
+                            formatDuration(holeSessionTimes[hole.id] || 0)
+                          )}
+                        </div>
+                        <div className="rounded flex justify-start items-center gap-2">
+                          <div className="w-7 h-7 flex justify-center items-center gap-2.5">
+                            <div className="w-4 h-4 relative overflow-hidden text-gray-950">
+                              <Icons.ChevronRightIcon />
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Create Hole Input */}
-          {showCreateInput && (
-            <div className="w-full bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <SingleLineTextField
-                  size="md"
-                  placeholder="Enter hole name"
-                  value={newHoleName}
-                  onChange={(e) => setNewHoleName(e.target.value)}
-                  isDisabled={isCreating}
-                  error={false}
-                  className="flex-1"
-                />
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleCreateSubmit}
-                  disabled={isCreating || !newHoleName.trim()}
-                >
-                  {isCreating ? 'Creating...' : 'Create'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={handleCreateCancel}
-                  disabled={isCreating}
-                >
-                  Cancel
-                </Button>
+            {/* Create Hole Input */}
+            {showCreateInput && (
+              <div className="w-full bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <SingleLineTextField
+                    size="md"
+                    placeholder="Enter hole name"
+                    value={newHoleName}
+                    onChange={(e) => setNewHoleName(e.target.value)}
+                    isDisabled={isCreating}
+                    error={false}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={handleCreateSubmit}
+                    disabled={isCreating || !newHoleName.trim()}
+                  >
+                    {isCreating ? 'Creating...' : 'Create'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={handleCreateCancel}
+                    disabled={isCreating}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getHole } from '@shared/services/holeService';
 import { getHoleSessions } from '@shared/services/sessionService';
-import { getSessionEntries, createTextEntry } from '@shared/services/textEntryService';
+import { getSessionEntries, createTextEntry, deleteTextEntry } from '@shared/services/textEntryService';
 import { getHighlights, addToHighlights, removeFromHighlights, clearHighlights } from '@shared/services/highlightService';
 import { Hole, Session, TextEntry } from '@shared/models/types';
 import { Button } from '../components/Button';
@@ -37,6 +37,8 @@ export default function InsightsPage() {
   const [hidePageInfo, setHidePageInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showHighlights, setShowHighlights] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   
   // Load hole data on mount
   useEffect(() => {
@@ -333,9 +335,44 @@ export default function InsightsPage() {
     return groups;
   };
 
+  // Handle entry deletion
+  const handleDeleteEntry = (entryId: string) => {
+    setEntryToDelete(entryId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!entryToDelete) return;
+    
+    try {
+      await deleteTextEntry(entryToDelete);
+      
+      // Remove from local state
+      setEntries(entries.filter(entry => entry.id !== entryToDelete));
+      
+      // Remove from highlights if it was highlighted
+      if (selectedEntries.includes(entryToDelete)) {
+        await removeFromHighlights(user!.uid, holeId!, entryToDelete);
+        setSelectedEntries(selectedEntries.filter(id => id !== entryToDelete));
+      }
+      
+      // Close modal
+      setShowDeleteModal(false);
+      setEntryToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+      // Show error to user (you could add a toast notification here)
+    }
+  };
+
+  const cancelDeleteEntry = () => {
+    setShowDeleteModal(false);
+    setEntryToDelete(null);
+  };
+
   if (loading && !hole) {
     return (
-      <div className="w-full min-h-screen flex flex-col">
+      <div className="w-full h-screen flex flex-col">
         <div className="flex-1 flex justify-center items-center">
           <div className="text-gray-700">Loading...</div>
         </div>
@@ -366,7 +403,7 @@ export default function InsightsPage() {
   const groupedEntries = groupEntriesBySource();
 
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col overflow-hidden">
+    <div className="w-full h-screen bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="w-full px-4 sm:px-6 bg-white border-b border-gray-200 flex flex-col justify-start items-center gap-2.5">
         <div className="w-full py-3 inline-flex justify-between items-center">
@@ -445,11 +482,11 @@ export default function InsightsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 w-ful h-full max-h-[calc(100vh-120px)] px-4 sm:px-6 lg:px-24 flex flex-col justify-start items-center gap-2.5 overflow-hidden">
-        <div className="w-full flex-1 max-w-[1520px] py-6 sm:py-10 flex flex-col xl:flex-row justify-center items-start gap-6 xl:gap-10 transition-all duration-300 ease-in-out">
+      <div className="flex-1 w-full h-full max-h-[calc(100vh-90px)] px-4 sm:px-6 lg:px-24 lg:py-10 flex flex-col justify-start items-center gap-2.5 overflow-hidden">
+        <div className="w-full flex-1 max-w-[1520px] h-[calc(100vh-160px)] pt-6 flex flex-col xl:flex-row justify-center items-start gap-6 xl:gap-10 transition-all duration-300 ease-in-out">
           {/* Left: Insights List */}
-          <div className={`flex-1 w-full h-[calc(100vh-160px)] flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out ${
-            showHighlights ? 'max-w-[1280px]' : 'max-w-none'
+          <div className={`w-full h-full flex flex-col justify-start items-start gap-5 overflow-hidden transition-all duration-300 ease-in-out ${
+            showHighlights ? 'flex-1 max-w-[1280px]' : 'max-w-[1000px] mx-auto'
           }`}>
             {/* Top Controls */}
             <div className="w-full h-auto flex flex-col sm:flex-row sm:h-10 justify-between items-start sm:items-center gap-4 sm:gap-0">
@@ -533,7 +570,7 @@ export default function InsightsPage() {
                     <div className="flex flex-col justify-start items-start gap-2">
                       <div className="flex justify-start items-center gap-3 sm:gap-4">
                         <img 
-                          className="w-16 h-8 sm:w-20 sm:h-10 rounded border border-gray-200 flex-shrink-0 object-cover" 
+                          className="w-10 h-10 sm:w-10 sm:h-10 rounded border border-gray-200 flex-shrink-0 object-cover" 
                           src={`https://api.urlbox.io/v1/qyfxZOkLVtHTYZlw/png?url=${encodeURIComponent(sourceUrl)}&width=320&height=160&delay=1000`}
                           alt="Site thumbnail"
                           onError={(e) => {
@@ -564,7 +601,7 @@ export default function InsightsPage() {
                     {groupedEntries[sourceUrl].map((entry) => (
                       <div 
                         key={entry.id}
-                        className={`w-full pl-3 sm:pl-4 pr-3 sm:pr-5 py-2 sm:py-1 border-l-2 border-line-tertiary inline-flex justify-start items-start gap-2.5 cursor-pointer hover:border-gray-400 transition-colors ${
+                        className={`group relative w-full pl-3 sm:pl-4 pr-3 sm:pr-5 py-2 sm:py-1 border-l-2 border-line-tertiary inline-flex justify-start items-start gap-2.5 cursor-pointer hover:border-gray-400 transition-colors ${
                           selectedEntries.includes(entry.id) ? 'border-line-tertia bg-fill-hover-secondary-light' : ''
                         }`}
                         onClick={() => toggleEntrySelection(entry.id)}
@@ -572,6 +609,17 @@ export default function InsightsPage() {
                         <div className="flex-1 justify-center text-text-primary-light text-body-lg-rg leading-snug">
                           {entry.content}
                         </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEntry(entry.id);
+                          }}
+                          className="absolute bottom-0 right-0 w-5 h-5 hover:bg-gray-100 flex justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <div className="w-3 h-3 relative overflow-hidden">
+                            <Icons.CloseIcon />
+                          </div>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -580,11 +628,11 @@ export default function InsightsPage() {
             </div>
           </div>
 
-          {/* Right: Highlights Panel */}
-          <div className={`w-full h-full xl:w-96 flex justify-center items-start gap-2.5 transition-all duration-300 ease-in-out ${
+          {/* Right: Highlights Panel - Always rendered with transform animation */}
+          <div className={`w-full h-full xl:w-96 flex justify-center items-start gap-2.5 transition-all duration-500 ease-in-out ${
             showHighlights 
-              ? 'translate-x-0 opacity-100' 
-              : 'xl:translate-x-full xl:opacity-0 xl:w-0 xl:overflow-hidden hidden xl:flex'
+              ? 'transform translate-x-0 opacity-100' 
+              : 'transform translate-x-full opacity-0 pointer-events-none xl:absolute xl:right-0'
           }`}>
             <div className="flex-1 h-full xl:self-stretch p-4 sm:p-5 bg-gray-25 rounded-2xl inline-flex flex-col justify-start items-start gap-5">
               {/* Highlights Header */}
@@ -610,11 +658,15 @@ export default function InsightsPage() {
               </div>
 
               {/* Highlights Content */}
-              <div className="w-full inline-flex justify-start items-start gap-1">
-                <div className="flex-1 inline-flex flex-col justify-start items-start gap-3">
+              {/* <div className="w-full inline-flex justify-start items-start gap-1"> */}
+              <div className="w-full flex-1 inline-flex justify-start items-start gap-1 overflow-hidden">
+
+                {/* <div className="flex-1 inline-flex flex-col justify-start items-start gap-3"> */}
+                <div className="flex-1 inline-flex flex-col items-center gap-3 overflow-y-auto h-full max-h-full pr-3.5">
+
                   {selectedEntries.length === 0 ? (
-                    <div className="w-full text-center py-10 text-text-tertiary-light text-body-md-rg">
-                      Click on insights to add them to highlights
+                    <div className="w-full pl-4 text-center text-text-secondary-light text-body-lg-rg">
+                      Click on insights <br /> to add them to highlights
                     </div>
                   ) : (
                     entries
@@ -622,7 +674,8 @@ export default function InsightsPage() {
                       .map(entry => (
                         <div 
                           key={entry.id}
-                          className="w-full pl-2 pr-5 py-1 inline-flex justify-center items-center gap-2.5"
+                          className="w-full px-2 py-1 inline-flex justify-center items-center gap-2.5 cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                          onClick={() => toggleEntrySelection(entry.id)}
                         >
                           <div className="flex-1 justify-center text-text-primary-light text-body-lg-rg leading-snug">
                             {entry.content}
@@ -631,35 +684,71 @@ export default function InsightsPage() {
                       ))
                   )}
                 </div>
-                <div className="hidden xl:block h-72 p-1 flex justify-start items-center gap-2.5">
+                {/* <div className="hidden xl:block h-72 p-1 flex justify-start items-center gap-2.5">
                   <div className="w-1 self-stretch bg-gray-200 rounded" />
-                </div>
+                </div> */}
               </div>
 
-              {selectedEntries.length > 0 && (
+              {/* {selectedEntries.length > 0 && (
                 <button
                   onClick={handleClearHighlights}
                   className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                 >
                   Clear All
                 </button>
-              )}
+              )} */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Floating Highlights Toggle Button - appears when panel is hidden */}
-      {!showHighlights && (
-        <div className="fixed right-0 top-[120px] z-10">
-          <button
-            onClick={() => setShowHighlights(true)}
-            className="w-12 h-12 bg-white border-l border-t border-b border-gray-200 rounded-tl-2xl rounded-bl-2xl flex justify-center items-center hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <div className="w-5 h-5 relative">
-              <Icons.HighlightIcon />
+      {/* Floating Highlights Toggle Button - slides in from right when panel is hidden */}
+      <div className={`fixed right-0 top-[120px] z-10 transition-all duration-500 ease-in-out ${
+        !showHighlights 
+          ? 'transform translate-x-0 opacity-100' 
+          : 'transform translate-x-full opacity-0 pointer-events-none'
+      }`}>
+        <button
+          onClick={() => setShowHighlights(true)}
+          className="w-12 h-12 bg-white border-l border-t border-b border-gray-200 rounded-tl-2xl rounded-bl-2xl flex justify-center items-center hover:bg-gray-50 transition-colors shadow-sm"
+        >
+          <div className="w-5 h-5 relative">
+            <Icons.HighlightIcon />
+          </div>
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="w-96 px-6 py-9 bg-white rounded-2xl border-t border-gray-200 flex flex-col justify-center items-center gap-6">
+            <div className="w-full flex flex-col justify-start items-center gap-3">
+              <div className="w-full text-center text-gray-950 text-lg font-medium leading-normal">
+                Delete the Insight?
+              </div>
+              <div className="w-full text-center text-gray-500 text-sm font-medium leading-none">
+                You will not be able to recover it,<br/>
+                but you can highlight more valuable insights.
+              </div>
             </div>
-          </button>
+            <div className="flex justify-end items-center gap-3">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={cancelDeleteEntry}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={confirmDeleteEntry}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
