@@ -111,7 +111,17 @@ const FinishSessionPage: React.FC = () => {
   };
 
   const handleCheckHoleClick = () => {
-    navigate('/hole-list');
+    if (state?.holeId) {
+      const webUrl = `https://famous-donut-955ac6.netlify.app/holes/${state.holeId}/insights`;
+      
+      // Chrome extension API를 사용하여 새 탭에서 웹사이트 열기
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: webUrl });
+      } else {
+        // Fallback: 일반 브라우저에서 새 창으로 열기
+        window.open(webUrl, '_blank');
+      }
+    }
   };
 
   const handleBackToHomeClick = () => {

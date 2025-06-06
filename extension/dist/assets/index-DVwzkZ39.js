@@ -57,7 +57,7 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 var require_index_001 = __commonJS({
-  "assets/index-Q4UIHSGj.js"(exports) {
+  "assets/index-DVwzkZ39.js"(exports) {
     function _mergeNamespaces(n2, m2) {
       for (var i = 0; i < m2.length; i++) {
         const e = m2[i];
@@ -44282,7 +44282,15 @@ This typically indicates that your device does not have a healthy Internet conne
         navigate("/hole-list");
       };
       const handleCheckHoleClick = () => {
-        navigate("/hole-list");
+        var _a;
+        if (state == null ? void 0 : state.holeId) {
+          const webUrl = `https://famous-donut-955ac6.netlify.app/holes/${state.holeId}/insights`;
+          if ((_a = chrome == null ? void 0 : chrome.tabs) == null ? void 0 : _a.create) {
+            chrome.tabs.create({ url: webUrl });
+          } else {
+            window.open(webUrl, "_blank");
+          }
+        }
       };
       const handleBackToHomeClick = () => {
         navigate("/hole-list");
